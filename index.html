@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paint 2D</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <h2>Paint 2D Control</h2>
+            <hr>
+
+            <div class="control-group">
+                <label for="shapeSelect">Pilih Alat / Bentuk:</label>
+                <select id="shapeSelect">
+                    <optgroup label="Garis & Bentuk">
+                        <option value="line_dda">Garis - DDA</option>
+                        <option value="line_bresenham" selected>Garis - Bresenham</option>
+                        <option value="shape_segitiga">Segitiga</option>
+                        <option value="shape_persegi">Persegi</option>
+                        <option value="shape_persegi_panjang">Persegi Panjang</option>
+                    </optgroup>
+                    <optgroup label="Lingkaran & Elips">
+                        <option value="circle_midpoint">Lingkaran - Midpoint</option>
+                        <option value="circle_simetris">Lingkaran - Simetris 8 Titik</option>
+                        <option value="ellipse_midpoint">Elips - Midpoint</option>
+                        <option value="ellipse_simetris">Elips - Simetris 4 Titik</option>
+                    </optgroup>
+                    <optgroup label="Pena Bebas / Brush">
+                        <option value="brush_pencil">Pencil</option>
+                        <option value="brush_pen">Pen</option>
+                        <option value="brush_marker">Marker</option>
+                        <option value="brush_airbrush">Airbrush</option>
+                        <option value="brush_watercolor">Watercolor Brush</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="colorPicker">Warna Utama:</label>
+                <input type="color" id="colorPicker" value="#ff0000">
+            </div>
+
+            <div class="control-group">
+                <label for="lineTypeSelect">Tipe Garis:</label>
+                <select id="lineTypeSelect">
+                    <option value="solid">Solid Line</option>
+                    <option value="dotted">Dotted Line</option>
+                    <option value="dashed">Dashed Line</option>
+                    <option value="dashed_dotted">Dashed-Dotted Line</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="lineWidthInput">Ketebalan Garis:</label>
+                <input type="number" id="lineWidthInput" min="1" max="20" value="1">
+            </div>
+
+            <div class="control-group">
+                <label for="fillSelect">Algoritma Fill:</label>
+                <select id="fillSelect">
+                    <option value="none">Tanpa Fill (Stroke Only)</option>
+                    <option value="fill_scanline">Scan Line</option>
+                    <option value="fill_inside_outside">Inside Outside Line</option>
+                    <option value="fill_boundary">Boundary Fill</option>
+                    <option value="fill_flood">Flood Fill</option>
+                </select>
+                <button id="applyFillBtn" class="btn-secondary">Jalankan Fill</button>
+            </div>
+
+            <div class="control-group">
+                <label>Transformasi:</label>
+                <div class="transform-buttons">
+                    <button id="transTranslasiBtn" title="Translasi">Geser</button>
+                    <button id="transSkalaBtn" title="Skala">Skala</button>
+                    <button id="transRotasiBtn" title="Rotasi">Rotasi</button>
+                    <button id="transRefleksiBtn" title="Refleksi">Cermin</button>
+                    <button id="transShearBtn" title="Shear">Shear</button>
+                </div>
+            </div>
+
+            <div class="control-group Canvas-actions">
+                <button id="clearBtn" class="btn-danger">Hapus Semua</button>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <canvas id="paintCanvas" width="800" height="600"></canvas>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
