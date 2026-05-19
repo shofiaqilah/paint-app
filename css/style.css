@@ -172,5 +172,5 @@ button:active {
     /* CSS di bawah ini memaksa kanvas mengecil proporsional mengikuti pembungkusnya */
     max-width: 100%;
     height: auto; 
-    aspect-ratio: 4 / 3; /* Menjaga aspek rasio sesuai width=800 height=600 di HTML */
+    aspect-ratio: 4 / 3; 
 }

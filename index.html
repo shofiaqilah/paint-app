@@ -1,99 +1,402 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Paint 2D</title>
-    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #dcdcdc;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* TOPBAR */
+        .topbar {
+            background: #cfcfcf;
+            border-bottom: 1px solid #999;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .topbar-title {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        button,
+        select,
+        input {
+            font-size: 12px;
+        }
+
+        button {
+            padding: 5px 10px;
+            border: 1px solid #888;
+            background: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #eaeaea;
+        }
+
+        button.active {
+            background: #2d7ff9;
+            color: white;
+        }
+
+        select {
+            padding: 4px;
+            border: 1px solid #888;
+        }
+
+        input[type="range"] {
+            width: 80px;
+        }
+
+        .divider {
+            width: 1px;
+            height: 25px;
+            background: #999;
+            margin: 0 4px;
+        }
+
+        /* MAIN */
+        .main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px;
+            background: #efefef;
+            border-right: 1px solid #999;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #aaa;
+            margin-bottom: 12px;
+        }
+
+        .panel-title {
+            background: #d6d6d6;
+            padding: 6px 8px;
+            font-weight: bold;
+            border-bottom: 1px solid #aaa;
+            font-size: 13px;
+        }
+
+        .panel-body {
+            padding: 10px;
+        }
+
+        .panel-body label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .panel-body input,
+        .panel-body select {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        /* TRANSFORM */
+        .transform-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
+        .transform-grid button {
+            padding: 6px;
+        }
+
+        .compass {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            margin-top: 10px;
+        }
+
+        .compass button {
+            padding: 10px;
+        }
+
+        /* CANVAS */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #bdbdbd;
+            padding: 20px;
+        }
+
+        canvas {
+            background: white;
+            border: 1px solid #666;
+        }
+
+        /* FOOTER */
+        .footer {
+            background: #cfcfcf;
+            border-top: 1px solid #999;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .xf-panel {
+            display: none;
+            margin-top: 12px;
+        }
+
+        .xf-panel.active {
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="app-container">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div class="topbar-title">Paint 2D</div>
+
+        <button class="shape-btn-active" data-shape="bresenham_line">Garis</button>
+        <button class="shape-btn" data-shape="bresenham_circle">Lingkaran</button>
+        <button class="shape-btn" data-shape="elips">Elips</button>
+        <button class="shape-btn" data-shape="square">Persegi</button>
+        <button class="shape-btn" data-shape="rectangle">Persegi Panjang</button>
+        <button class="shape-btn" data-shape="triangle">Segitiga</button>
+
+        <div class="divider"></div>
+
+        <select>
+            <option>DDA</option>
+            <option>Bresenham</option>
+        </select>
+
+        <select id="lineTypeSelect">
+            <option>Solid</option>
+            <option>Dashed</option>
+            <option>Dotted</option>
+        </select>
+
+        <input type="color" id="colorPicker"/>
+
+        <button id="clearBtn">Clear</button>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+        <!-- SIDEBAR -->
         <div class="sidebar">
-            <h2>Paint 2D Control</h2>
-            <hr>
 
-            <div class="control-group">
-                <label for="shapeSelect">Pilih Alat / Bentuk:</label>
-                <select id="shapeSelect">
-                    <optgroup label="Garis & Bentuk">
-                        <option value="line_dda">Garis - DDA</option>
-                        <option value="line_bresenham" selected>Garis - Bresenham</option>
-                        <option value="shape_segitiga">Segitiga</option>
-                        <option value="shape_persegi">Persegi</option>
-                        <option value="shape_persegi_panjang">Persegi Panjang</option>
-                    </optgroup>
-                    <optgroup label="Lingkaran & Elips">
-                        <option value="circle_midpoint">Lingkaran - Midpoint</option>
-                        <option value="circle_simetris">Lingkaran - Simetris 8 Titik</option>
-                        <option value="ellipse_midpoint">Elips - Midpoint</option>
-                        <option value="ellipse_simetris">Elips - Simetris 4 Titik</option>
-                    </optgroup>
-                    <optgroup label="Pena Bebas / Brush">
-                        <option value="brush_pencil">Pencil</option>
-                        <option value="brush_pen">Pen</option>
-                        <option value="brush_marker">Marker</option>
-                        <option value="brush_airbrush">Airbrush</option>
-                        <option value="brush_watercolor">Watercolor Brush</option>
-                    </optgroup>
-                </select>
-            </div>
+            <!-- Ketebalan -->
+            <div class="panel">
+                <div class="panel-title">Ketebalan Garis</div>
 
-            <div class="control-group">
-                <label for="colorPicker">Warna Utama:</label>
-                <input type="color" id="colorPicker" value="#ff0000">
-            </div>
-
-            <div class="control-group">
-                <label for="lineTypeSelect">Tipe Garis:</label>
-                <select id="lineTypeSelect">
-                    <option value="solid">Solid Line</option>
-                    <option value="dotted">Dotted Line</option>
-                    <option value="dashed">Dashed Line</option>
-                    <option value="dashed_dotted">Dashed-Dotted Line</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <label for="lineWidthInput">Ketebalan Garis:</label>
-                <input type="number" id="lineWidthInput" min="1" max="20" value="1">
-            </div>
-
-            <div class="control-group">
-                <label for="fillSelect">Algoritma Fill:</label>
-                <select id="fillSelect">
-                    <option value="none">Tanpa Fill (Stroke Only)</option>
-                    <option value="fill_scanline">Scan Line</option>
-                    <option value="fill_inside_outside">Inside Outside Line</option>
-                    <option value="fill_boundary">Boundary Fill</option>
-                    <option value="fill_flood">Flood Fill</option>
-                </select>
-                <button id="applyFillBtn" class="btn-secondary">Jalankan Fill</button>
-            </div>
-
-            <div class="control-group">
-                <label>Transformasi:</label>
-                <div class="transform-buttons">
-                    <button id="transTranslasiBtn" title="Translasi">Geser</button>
-                    <button id="transSkalaBtn" title="Skala">Skala</button>
-                    <button id="transRotasiBtn" title="Rotasi">Rotasi</button>
-                    <button id="transRefleksiBtn" title="Refleksi">Cermin</button>
-                    <button id="transShearBtn" title="Shear">Shear</button>
+                <div class="panel-body">
+                    <input type="range" id="lineWidthInput" min="1" max="10" />
                 </div>
             </div>
 
-            <div class="control-group Canvas-actions">
-                <button id="clearBtn" class="btn-danger">Hapus Semua</button>
+            <!-- Fill -->
+            <div class="panel">
+                <div class="panel-title">Algoritma Fill</div>
+
+                <div class="panel-body">
+                    <select id="fillSelect">
+                        <option>Scan Line</option>
+                        <option>Flood Fill</option>
+                        <option>Boundary Fill</option>
+                    </select>
+                </div>
             </div>
+
+            <!-- Transformasi -->
+            <!-- Transformasi -->
+            <div class="panel">
+
+                <div class="panel-title">
+                    Transformasi
+                </div>
+
+                <div class="panel-body">
+
+                    <!-- TAB -->
+                    <div class="transform-grid">
+
+                        <button class="xf-tab active" data-target="translate">
+                            Translasi
+                        </button>
+
+                        <button class="xf-tab" data-target="rotate">
+                            Rotasi
+                        </button>
+
+                        <button class="xf-tab" data-target="scale">
+                            Scaling
+                        </button>
+
+                        <button class="xf-tab" data-target="reflect">
+                            Refleksi
+                        </button>
+
+                        <button class="xf-tab" data-target="shear">
+                            Shear
+                        </button>
+
+                    </div>
+
+                    <!-- TRANSLASI -->
+                    <div class="xf-panel active" id="translate">
+
+                        <label>Step (px)</label>
+                        <input type="number" value="20">
+
+                        <div class="compass">
+                            <button>↖</button>
+                            <button>↑</button>
+                            <button>↗</button>
+                            <button>←</button>
+                            <button disabled>•</button>
+                            <button>→</button>
+                            <button>↙</button>
+                            <button>↓</button>
+                            <button>↘</button>
+                        </div>
+
+                    </div>
+
+                    <!-- ROTASI -->
+                    <div class="xf-panel" id="rotate">
+
+                        <label>Sudut</label>
+                        <input type="number" value="45">
+
+                        <div class="transform-grid">
+                            <button>↺ Kiri</button>
+                            <button>↻ Kanan</button>
+                        </div>
+
+                    </div>
+
+                    <!-- SCALING -->
+                    <div class="xf-panel" id="scale">
+
+                        <label>Sx</label>
+                        <input type="number" value="1.5" step="0.1">
+
+                        <label>Sy</label>
+                        <input type="number" value="1.5" step="0.1">
+
+                        <button style="margin-top:10px;">
+                            Terapkan Scaling
+                        </button>
+
+                    </div>
+
+                    <!-- REFLEKSI -->
+                    <div class="xf-panel" id="reflect">
+
+                        <div class="transform-grid">
+                            <button>Sumbu X</button>
+                            <button>Sumbu Y</button>
+                            <button>y = x</button>
+                            <button>y = -x</button>
+                        </div>
+
+                    </div>
+
+                    <!-- SHEAR -->
+                    <div class="xf-panel" id="shear">
+
+                        <label>Shx</label>
+                        <input type="number" value="0.3" step="0.1">
+
+                        <label>Shy</label>
+                        <input type="number" value="0" step="0.1">
+
+                        <button style="margin-top:10px;">
+                            Terapkan Shear
+                        </button>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Pena -->
+            <div class="panel">
+                <div class="panel-title">Pena Bebas</div>
+
+                <div class="panel-body">
+                    <button>Pencil</button>
+                    <button>Marker</button>
+                    <button>Airbrush</button>
+                </div>
+            </div>
+
         </div>
 
+        <!-- CANVAS -->
         <div class="canvas-area">
-            <canvas id="paintCanvas" width="800" height="600"></canvas>
+            <canvas id="paintCanvas" width="900" height="550"></canvas>
         </div>
     </div>
 
+    <!-- FOOTER -->
+    <div class="footer">
+        Tool aktif : Garis Bresenham
+    </div>
     <script type="module" src="js/main.js"></script>
+    <script>
+
+        const tabs = document.querySelectorAll('.xf-tab');
+        const panels = document.querySelectorAll('.xf-panel');
+
+        tabs.forEach(tab => {
+
+            tab.addEventListener('click', () => {
+
+                tabs.forEach(t => t.classList.remove('active'));
+                panels.forEach(p => p.classList.remove('active'));
+
+                tab.classList.add('active');
+
+                document
+                    .getElementById(tab.dataset.target)
+                    .classList.add('active');
+
+            });
+
+        });
+
+    </script>
 </body>
 
 </html>

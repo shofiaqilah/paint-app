@@ -1,18 +1,18 @@
 // main.js
-import { getBresenhamPoints } from "./algoritma/brensenham_line.js";
-import { getMidpointCircle } from "./algoritma/brensenham_circle.js";
+import { getBresenhamPoints } from "./algorithms/bresenham_line.js";
+import { getMidpointCircle } from "./algorithms/bresenham_circle.js";
 
 // Inisiasi Canvas
-const canvas = document.getElementById("paintCanvas");
-const ctx = canvas.getContext("2d");
+import { canvas, ctx } from "./utils/canvas.js";
 
 // Elemen UI Baru
 const colorPicker = document.getElementById("colorPicker");
-const shapeSelect = document.getElementById("shapeSelect");
+// const shapeSelect = document.getElementById("shapeSelect");
 const lineTypeSelect = document.getElementById("lineTypeSelect");
 const lineWidthInput = document.getElementById("lineWidthInput");
 const fillSelect = document.getElementById("fillSelect");
 
+let currentShape = "bresenham_line";
 let startX, startY;
 
 function drawPixel(x, y, color) {
@@ -32,25 +32,46 @@ canvas.addEventListener("mouseup", (e) => {
   const endY = Math.floor(e.clientY - rect.top);
 
   const color = colorPicker.value;
-  const shape = shapeSelect.value;
+  const shape = currentShape;
 
   const lineType = lineTypeSelect.value;
   const lineWidth = parseInt(lineWidthInput.value);
 
+  // event button untuk pilih bentuk
+  const shapeButtons = document.querySelectorAll(".shape-btn");
+
+  shapeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      shapeButtons.forEach((b) => b.classList.remove("active"));
+
+      btn.classList.add("active");
+
+      currentShape = btn.dataset.shape;
+    });
+  });
+
   switch (shape) {
-    case "line_bresenham":
+    case "bresenham_line":
       const points = getBresenhamPoints(startX, startY, endX, endY);
       points.forEach((p) => drawPixel(p.x, p.y, color));
       break;
 
-    case "circle_midpoint":
+    case "bresenham_circle":
       const radius = Math.floor(
         Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2),
       );
       const circlePoints = getMidpointCircle(startX, startY, radius);
       circlePoints.forEach((p) => drawPixel(p.x, p.y, color));
       break;
-    
+
+    case "elips":
+      break;
+
+    case "rectangle":
+      break;
+
+    case "square":
+      break;
   }
 });
 
