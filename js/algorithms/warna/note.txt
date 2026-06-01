@@ -1,0 +1,14 @@
+//Contoh pakek warna di main
+import { boundaryFill } from './boundaryFill.js';
+import { floodFill } from './floodFill.js';
+import { scanLineFill } from './scanLine.js';
+import { insideOutsideFill } from './insideOutside.js';
+
+const canvas = document.getElementById('myCanvas');
+const ctx = canvas.getContext('2d');
+
+// Contoh koordinat poligon (Segitiga / Kotak)
+const polygon = [{x: 50, y: 50}, {x: 150, y: 20}, {x: 100, y: 150}];
+
+// Panggil salah satu fungsi sesuai kebutuhan Anda
+// scanLineFill(ctx, polygon, '#FF0000');
