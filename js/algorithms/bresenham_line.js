@@ -1,5 +1,13 @@
-// js/algorithms.js
+// js/algorithms/bresenham_line.js
 
+/**
+ * Menghasilkan semua titik garis menggunakan algoritma Bresenham.
+ * @param {number} x0 - Titik awal X
+ * @param {number} y0 - Titik awal Y
+ * @param {number} x1 - Titik akhir X
+ * @param {number} y1 - Titik akhir Y
+ * @returns {{ x: number, y: number }[]} Array titik-titik garis
+ */
 export function getBresenhamPoints(x0, y0, x1, y1) {
   let points = [];
   let dx = Math.abs(x1 - x0);

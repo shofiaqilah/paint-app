@@ -1,12 +1,12 @@
 import { getBresenhamPoints } from "./algorithms/bresenham_line.js";
-import { getDdaPoints } from "./algorithms/dda_line.js";
+import { getDdaPoints, applyLineStyle } from "./algorithms/dda_line.js";
 import { getMidpointCircle } from "./algorithms/midpoint_circle.js";
 import { getMidpointEllipse } from "./algorithms/midpoint_ellipse.js";
+import { getSquarePoints, getRectanglePoints, getTrianglePoints } from "./shapes/shapes.js";
 import { scanLineFill } from "./algorithms/warna/scanline.js";
 import { floodFill } from "./algorithms/warna/floodfill.js";
 import { boundaryFill } from "./algorithms/warna/boundaryfill.js";
 import {
-  getPixelColor,
   hexToRgba,
   rgbaToCss,
 } from "./algorithms/warna/helper.js";
@@ -14,6 +14,8 @@ import { canvas, ctx, clearCanvas } from "./utils/canvas.js";
 
 const colorPicker = document.getElementById("colorPicker");
 const lineTypeSelect = document.getElementById("lineTypeSelect");
+const lineStyleSelect = document.getElementById("lineStyleSelect");
+const triangleTypeSelect = document.getElementById("triangleTypeSelect");
 const lineWidthInput = document.getElementById("lineWidthInput");
 const fillSelect = document.getElementById("fillSelect");
 const applyFillBtn = document.getElementById("applyFillBtn");
@@ -44,16 +46,45 @@ function shouldPreviewShape(shape) {
   return (
     shape === "bresenham_line" ||
     shape === "midpoint_circle" ||
-    shape === "elips"
+    shape === "elips" ||
+    shape === "square" ||
+    shape === "rectangle" ||
+    shape === "triangle"
   );
 }
 
 function setActiveShape(shape) {
   currentShape = shape;
 
+  // Tampilkan/sembunyikan dropdown tipe segitiga
+  const trianglePanel = document.getElementById("triangleTypePanel");
+  if (trianglePanel) {
+    trianglePanel.style.display = shape === "triangle" ? "inline-flex" : "none";
+  }
+
+  // Tampilkan/sembunyikan dropdown algoritma garis (hanya untuk garis)
+  const lineTypePanel = document.getElementById("lineTypePanel");
+  if (lineTypePanel) {
+    lineTypePanel.style.display = shape === "bresenham_line" ? "inline-flex" : "none";
+  }
+
   shapeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.shape === shape);
   });
+
+  // Update footer
+  const footer = document.querySelector(".footer");
+  if (footer) {
+    const labels = {
+      bresenham_line: `Garis (${lineTypeSelect.value})`,
+      midpoint_circle: "Lingkaran",
+      elips: "Elips",
+      square: "Persegi",
+      rectangle: "Persegi Panjang",
+      triangle: "Segitiga",
+    };
+    footer.textContent = `Tool aktif : ${labels[shape] || shape}`;
+  }
 }
 
 function plotPixel(x, y, color, size = 1) {
@@ -117,16 +148,24 @@ function renderShape(
   const strokeColor = preview
     ? rgbaToCss({ ...hexToRgba(color), a: 90 })
     : color;
+
+  // Ambil tipe garis (hanya berlaku untuk shape berbasis garis)
+  const rawStyle = lineStyleSelect ? lineStyleSelect.value.toLowerCase() : "solid";
+  // Normalisasi: "dashed-dotted" dari value HTML
+  const lineStyle = rawStyle.replace(" ", "-"); // "dashed dotted" → "dashed-dotted"
+
   let points = [];
 
   switch (currentShape) {
-    case "bresenham_line":
-      points =
+    case "bresenham_line": {
+      const rawPoints =
         lineTypeSelect.value === "DDA"
           ? getDdaPoints(startPointX, startPointY, endPointX, endPointY)
           : getBresenhamPoints(startPointX, startPointY, endPointX, endPointY);
+      points = applyLineStyle(rawPoints, lineStyle);
       break;
-    case "bresenham_circle": {
+    }
+    case "midpoint_circle": {
       const radius = Math.max(
         1,
         Math.round(
@@ -140,6 +179,22 @@ function renderShape(
       const radiusX = Math.max(1, Math.abs(endPointX - startPointX));
       const radiusY = Math.max(1, Math.abs(endPointY - startPointY));
       points = getMidpointEllipse(startPointX, startPointY, radiusX, radiusY);
+      break;
+    }
+    case "square": {
+      const rawPoints = getSquarePoints(startPointX, startPointY, endPointX, endPointY);
+      points = applyLineStyle(rawPoints, lineStyle);
+      break;
+    }
+    case "rectangle": {
+      const rawPoints = getRectanglePoints(startPointX, startPointY, endPointX, endPointY);
+      points = applyLineStyle(rawPoints, lineStyle);
+      break;
+    }
+    case "triangle": {
+      const triType = triangleTypeSelect ? triangleTypeSelect.value : "right";
+      const rawPoints = getTrianglePoints(startPointX, startPointY, endPointX, endPointY, triType);
+      points = applyLineStyle(rawPoints, lineStyle);
       break;
     }
     default:

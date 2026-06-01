@@ -193,16 +193,29 @@
 
       <div class="divider"></div>
 
-      <select id="lineTypeSelect">
-        <option>DDA</option>
-        <option>Bresenham</option>
-      </select>
+      <span id="lineTypePanel" style="display:inline-flex; align-items:center; gap:4px;">
+        <label style="font-size:12px; white-space:nowrap;">Algoritma:</label>
+        <select id="lineTypeSelect">
+          <option>DDA</option>
+          <option>Bresenham</option>
+        </select>
+      </span>
 
       <select id="lineStyleSelect">
-        <option>Solid</option>
-        <option>Dashed</option>
-        <option>Dotted</option>
+        <option value="solid">Solid</option>
+        <option value="dashed">Dashed</option>
+        <option value="dotted">Dotted</option>
+        <option value="dashed-dotted">Dashed-dotted</option>
       </select>
+
+      <span id="triangleTypePanel" style="display:none; align-items:center; gap:4px;">
+        <label style="font-size:12px; white-space:nowrap;">Segitiga:</label>
+        <select id="triangleTypeSelect">
+          <option value="right">Siku-siku</option>
+          <option value="isosceles">Sama Kaki</option>
+          <option value="equilateral">Sama Sisi</option>
+        </select>
+      </span>
 
       <input type="color" id="colorPicker" />
 
@@ -218,7 +231,8 @@
           <div class="panel-title">Ketebalan Garis</div>
 
           <div class="panel-body">
-            <input type="range" id="lineWidthInput" min="1" max="10" />
+            <label>Tebal: <span id="lineWidthLabel">1</span>px</label>
+            <input type="range" id="lineWidthInput" min="1" max="10" value="1" />
           </div>
         </div>
 
@@ -343,6 +357,7 @@
     <div class="footer">Tool aktif : Garis Bresenham</div>
     <script type="module" src="js/main.js"></script>
     <script>
+      // Tab transformasi
       const tabs = document.querySelectorAll(".xf-tab");
       const panels = document.querySelectorAll(".xf-panel");
 
@@ -355,6 +370,13 @@
 
           document.getElementById(tab.dataset.target).classList.add("active");
         });
+      });
+
+      // Label ketebalan garis
+      const lineWidthInput = document.getElementById("lineWidthInput");
+      const lineWidthLabel = document.getElementById("lineWidthLabel");
+      lineWidthInput.addEventListener("input", () => {
+        lineWidthLabel.textContent = lineWidthInput.value;
       });
     </script>
   </body>
