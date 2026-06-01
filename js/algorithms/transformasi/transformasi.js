@@ -19,6 +19,89 @@ function applyTransformation(vertices, matrix) {
     return vertices.map(point => multiplyMatrixVector(matrix, point));
 }
 
+/**
+ * Menskalakan lingkaran/elips secara parametrik
+ * @param {Object} metadata - {type, cx, cy, [r], [rx, ry]}
+ * @param {number} sx - Skala X
+ * @param {number} sy - Skala Y
+ * @param {Object} transformCenter - Titik acuan transformasi {x, y}
+ */
+export function scaleEllipse(metadata, sx, sy, transformCenter) {
+    const newMetadata = { ...metadata };
+    
+    // 1. Skala Radius (Lingkaran bisa jadi Elips jika sx != sy)
+    if (newMetadata.type === 'circle') {
+        if (Math.abs(sx - sy) < 0.001) {
+            newMetadata.r = Math.abs(newMetadata.r * sx);
+        } else {
+            newMetadata.type = 'ellipse';
+            newMetadata.rx = Math.abs(newMetadata.r * sx);
+            newMetadata.ry = Math.abs(newMetadata.r * sy);
+            delete newMetadata.r;
+        }
+    } else {
+        newMetadata.rx = Math.abs(newMetadata.rx * sx);
+        newMetadata.ry = Math.abs(newMetadata.ry * sy);
+    }
+
+    // 2. Geser Pusat relatif terhadap titik transformasi
+    const movedCenter = scale([{ x: metadata.cx, y: metadata.cy }], sx, sy, transformCenter);
+    newMetadata.cx = movedCenter[0].x;
+    newMetadata.cy = movedCenter[0].y;
+
+    return newMetadata;
+}
+
+/**
+ * Merefleksikan lingkaran/elips secara parametrik
+ */
+export function reflectEllipse(metadata, axis, transformCenter) {
+    const newMetadata = { ...metadata };
+    const pts = [{ x: metadata.cx, y: metadata.cy }];
+    let res = [];
+
+    // Refleksi Titik Pusat
+    if (axis === "X") res = pts.map(v => ({ x: v.x, y: 2 * transformCenter.y - v.y }));
+    else if (axis === "Y") res = pts.map(v => ({ x: 2 * transformCenter.x - v.x, y: v.y }));
+    else if (axis === "XY") res = pts.map(v => ({ x: transformCenter.x + (v.y - transformCenter.y), y: transformCenter.y + (v.x - transformCenter.x) }));
+    else if (axis === "ORIGIN") res = pts.map(v => ({ x: transformCenter.x - (v.y - transformCenter.y), y: transformCenter.y - (v.x - transformCenter.x) }));
+
+    if (res.length) {
+        newMetadata.cx = res[0].x;
+        newMetadata.cy = res[0].y;
+
+        // Jika refleksi diagonal (y=x atau y=-x) pada elips, tukar rx dan ry
+        if (newMetadata.type === 'ellipse' && (axis === "XY" || axis === "ORIGIN")) {
+            const temp = newMetadata.rx;
+            newMetadata.rx = newMetadata.ry;
+            newMetadata.ry = temp;
+        }
+    }
+
+    return newMetadata;
+}
+
+/**
+ * Menggeser (Shear) lingkaran/elips.
+ * Rekomendasi: Karena Midpoint Elips hanya untuk axis-aligned, 
+ * kita 'Bake' elips menjadi kumpulan titik (vertices) agar efek miring terlihat.
+ */
+export function shearEllipse(metadata, shx, shy, bakeFn) {
+    const vertices = bakeFn(metadata);
+    return shear(vertices, shx, shy);
+}
+
+/**
+ * Fungsi helper untuk 'Baking' (mengonversi kurva parametrik ke path/titik)
+ */
+export function bakeCurveToVertices(metadata, getPointsFn, lineStyle = 'solid') {
+    if (metadata.type === 'circle') {
+        return getPointsFn(metadata.cx, metadata.cy, metadata.r, lineStyle);
+    } else {
+        return getPointsFn(metadata.cx, metadata.cy, metadata.rx, metadata.ry, lineStyle);
+    }
+}
+
 // ==========================================
 // 1. TRANSLASI (Pergeseran)
 // ==========================================

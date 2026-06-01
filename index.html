@@ -4,361 +4,195 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Paint 2D</title>
-
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: Arial, sans-serif;
-        background: #dcdcdc;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-
-      /* TOPBAR */
-      .topbar {
-        background: #cfcfcf;
-        border-bottom: 1px solid #999;
-        padding: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .topbar-title {
-        font-weight: bold;
-        margin-right: 10px;
-      }
-
-      button,
-      select,
-      input {
-        font-size: 12px;
-      }
-
-      button {
-        padding: 5px 10px;
-        border: 1px solid #888;
-        background: white;
-        cursor: pointer;
-      }
-
-      button:hover {
-        background: #eaeaea;
-      }
-
-      button.active {
-        background: #2d7ff9;
-        color: white;
-      }
-
-      select {
-        padding: 4px;
-        border: 1px solid #888;
-      }
-
-      input[type="range"] {
-        width: 80px;
-      }
-
-      .divider {
-        width: 1px;
-        height: 25px;
-        background: #999;
-        margin: 0 4px;
-      }
-
-      /* MAIN */
-      .main {
-        flex: 1;
-        display: flex;
-        overflow: hidden;
-      }
-
-      /* SIDEBAR */
-      .sidebar {
-        width: 260px;
-        background: #efefef;
-        border-right: 1px solid #999;
-        padding: 10px;
-        overflow-y: auto;
-      }
-
-      .panel {
-        background: white;
-        border: 1px solid #aaa;
-        margin-bottom: 12px;
-      }
-
-      .panel-title {
-        background: #d6d6d6;
-        padding: 6px 8px;
-        font-weight: bold;
-        border-bottom: 1px solid #aaa;
-        font-size: 13px;
-      }
-
-      .panel-body {
-        padding: 10px;
-      }
-
-      .panel-body label {
-        display: block;
-        margin-bottom: 4px;
-        font-size: 12px;
-      }
-
-      .panel-body input,
-      .panel-body select {
-        margin-bottom: 10px;
-        width: 100%;
-      }
-
-      /* TRANSFORM */
-      .transform-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
-      }
-
-      .transform-grid button {
-        padding: 6px;
-      }
-
-      .compass {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 4px;
-        margin-top: 10px;
-      }
-
-      .compass button {
-        padding: 10px;
-      }
-
-      /* CANVAS */
-      .canvas-area {
-        flex: 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: #bdbdbd;
-        padding: 20px;
-      }
-
-      canvas {
-        background: white;
-        border: 1px solid #666;
-      }
-
-      /* FOOTER */
-      .footer {
-        background: #cfcfcf;
-        border-top: 1px solid #999;
-        padding: 5px 10px;
-        font-size: 12px;
-      }
-
-      .xf-panel {
-        display: none;
-        margin-top: 12px;
-      }
-
-      .xf-panel.active {
-        display: block;
-      }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
   </head>
 
   <body>
-    <!-- TOPBAR -->
-    <div class="topbar">
-      <div class="topbar-title">Paint 2D</div>
+    <!-- ZONA 1 — Title Bar -->
+    <header class="titlebar">
+      <div class="quick-access">
+        <button class="icon-btn" id="btnSave" title="Save">💾</button>
+        <button class="icon-btn" id="btnUndo" title="Undo (Ctrl+Z)">↩️</button>
+        <button class="icon-btn" id="btnRedo" title="Redo (Ctrl+Y)">↪️</button>
+      </div>
+      <div class="window-title">Paint 2D</div>
+    </header>
 
-      <button class="shape-btn active" data-shape="bresenham_line">
-        Garis
-      </button>
-      <button class="shape-btn" data-shape="midpoint_circle">Lingkaran</button>
-      <button class="shape-btn" data-shape="elips">Elips</button>
-      <button class="shape-btn" data-shape="square">Persegi</button>
-      <button class="shape-btn" data-shape="rectangle">Persegi Panjang</button>
-      <button class="shape-btn" data-shape="triangle">Segitiga</button>
-
-      <div class="divider"></div>
-
-      <span id="lineTypePanel" style="display:inline-flex; align-items:center; gap:4px;">
-        <label style="font-size:12px; white-space:nowrap;">Algoritma:</label>
-        <select id="lineTypeSelect">
-          <option>DDA</option>
-          <option>Bresenham</option>
-        </select>
-      </span>
-
-      <select id="lineStyleSelect">
-        <option value="solid">Solid</option>
-        <option value="dashed">Dashed</option>
-        <option value="dotted">Dotted</option>
-        <option value="dashed-dotted">Dashed-dotted</option>
-      </select>
-
-      <span id="triangleTypePanel" style="display:none; align-items:center; gap:4px;">
-        <label style="font-size:12px; white-space:nowrap;">Segitiga:</label>
-        <select id="triangleTypeSelect">
-          <option value="right">Siku-siku</option>
-          <option value="isosceles">Sama Kaki</option>
-          <option value="equilateral">Sama Sisi</option>
-        </select>
-      </span>
-
-      <input type="color" id="colorPicker" />
-
-      <button id="clearBtn">Clear</button>
-    </div>
-
-    <!-- MAIN -->
-    <div class="main">
-      <!-- SIDEBAR -->
-      <div class="sidebar">
-        <!-- Ketebalan -->
-        <div class="panel">
-          <div class="panel-title">Ketebalan Garis</div>
-
-          <div class="panel-body">
-            <label>Tebal: <span id="lineWidthLabel">1</span>px</label>
-            <input type="range" id="lineWidthInput" min="1" max="10" value="1" />
-          </div>
+    <!-- ZONA 2 — Ribbon -->
+    <nav class="ribbon">
+      <!-- Grup Tools -->
+      <div class="ribbon-group">
+        <div class="ribbon-content tools-grid">
+          <button class="shape-btn icon-btn tool-active" data-shape="pencil" title="Pencil">✏️</button>
+          <button class="shape-btn icon-btn" data-shape="marker" title="Marker">🖍️</button>
+          <button class="shape-btn icon-btn" data-shape="airbrush" title="Airbrush">💨</button>
+          <button class="shape-btn icon-btn" data-shape="select" id="btnSelect" title="Select">⬚</button>
+          <button class="shape-btn icon-btn" data-shape="fill" id="applyFillBtn" title="Fill">🪣</button>
+          <button class="icon-btn" title="Pick Color (Not Implemented)">💉</button>
+          <button class="icon-btn" title="Eraser (Not Implemented)">🧽</button>
+          <button class="icon-btn" title="Zoom (Not Implemented)">🔍</button>
         </div>
+        <div class="ribbon-label">Tools & Brushes</div>
+      </div>
+      <div class="ribbon-separator"></div>
 
-        <!-- Fill -->
-        <div class="panel">
-          <div class="panel-title">Algoritma Fill</div>
-
-          <div class="panel-body">
-            <select id="fillSelect">
-              <option value="Scan Line">Scan Line</option>
-              <option value="Inside-Outside">Inside-Outside</option>
-              <option value="Flood Fill">Flood Fill</option>
-              <option value="Boundary Fill">Boundary Fill</option>
+      <!-- Grup Shapes -->
+      <div class="ribbon-group">
+        <div class="ribbon-content">
+          <div class="shapes-grid">
+            <button class="shape-btn icon-btn active" data-shape="bresenham_line" title="Garis">📏</button>
+            <button class="shape-btn icon-btn" data-shape="midpoint_circle" title="Lingkaran">⭕</button>
+            <button class="shape-btn icon-btn" data-shape="elips" title="Elips">⬭</button>
+            <button class="shape-btn icon-btn" data-shape="square" title="Persegi">⬜</button>
+            <button class="shape-btn icon-btn" data-shape="rectangle" title="Persegi Panjang">▭</button>
+            <button class="shape-btn icon-btn" data-shape="triangle" title="Segitiga">△</button>
+          </div>
+          <div class="ribbon-stack" style="margin-left: 8px;">
+            <select id="lineStyleSelect" title="Outline Style">
+              <option value="solid">Outline: Solid</option>
+              <option value="dashed">Outline: Dashed</option>
+              <option value="dotted">Outline: Dotted</option>
+              <option value="dashed-dotted">Outline: Dash-Dot</option>
             </select>
-
-            <button id="applyFillBtn">Apply Fill</button>
+            <select id="fillSelect" title="Fill Style">
+              <option value="None">Fill: None</option>
+              <option value="Scan Line">Fill: Scan Line</option>
+              <option value="Inside-Outside">Fill: Inside-Outside</option>
+              <option value="Flood Fill">Fill: Flood Fill</option>
+              <option value="Boundary Fill">Fill: Boundary Fill</option>
+            </select>
+            <span id="triangleTypePanel" style="display:none; align-items:center; gap:4px;">
+              <select id="triangleTypeSelect" title="Tipe Segitiga">
+                <option value="right">Siku-siku</option>
+                <option value="isosceles">Sama Kaki</option>
+                <option value="equilateral">Sama Sisi</option>
+              </select>
+            </span>
           </div>
         </div>
+        <div class="ribbon-label">Shapes</div>
+      </div>
+      <div class="ribbon-separator"></div>
 
-        <!-- Transformasi -->
-        <!-- Transformasi -->
-        <div class="panel">
-          <div class="panel-title">Transformasi</div>
-
-          <div class="panel-body">
-            <!-- TAB -->
-            <div class="transform-grid">
-              <button class="xf-tab active" data-target="translate">
-                Translasi
-              </button>
-
-              <button class="xf-tab" data-target="rotate">Rotasi</button>
-
-              <button class="xf-tab" data-target="scale">Scaling</button>
-
-              <button class="xf-tab" data-target="reflect">Refleksi</button>
-
-              <button class="xf-tab" data-target="shear">Shear</button>
-            </div>
-
-            <!-- TRANSLASI -->
-            <div class="xf-panel active" id="translate">
-              <label>Step (px)</label>
-              <input type="number" id="translateStep" value="20" />
-
-              <div class="compass">
-                <button id="btn-translate" data-tx="-1" data-ty="-1">↖</button>
-                <button id="btn-translate" data-tx="0"  data-ty="-1">↑</button>
-                <button id="btn-translate" data-tx="1"  data-ty="-1">↗</button>
-                <button id="btn-translate" data-tx="-1" data-ty="0">←</button>
-                <button disabled>•</button>
-                <button id="btn-translate" data-tx="1"  data-ty="0">→</button>
-                <button id="btn-translate" data-tx="-1" data-ty="1">↙</button>
-                <button id="btn-translate" data-tx="0"  data-ty="1">↓</button>
-                <button id="btn-translate" data-tx="1"  data-ty="1">↘</button>
-              </div>
-            </div>
-
-            <!-- ROTASI -->
-            <div class="xf-panel" id="rotate">
-              <label>Sudut (derajat)</label>
-              <input type="number" id="rotateAngle" value="45" />
-
-              <div class="transform-grid">
-                <button id="btn-rotate-left">↺ Kiri</button>
-                <button id="btn-rotate-right">↻ Kanan</button>
-              </div>
-            </div>
-
-            <!-- SCALING -->
-            <div class="xf-panel" id="scale">
-              <label>Sx</label>
-              <input type="number" id="scaleSx" value="1.5" step="0.1" />
-
-              <label>Sy</label>
-              <input type="number" id="scaleSy" value="1.5" step="0.1" />
-
-              <button id="btn-scale" style="margin-top: 10px">Terapkan Scaling</button>
-            </div>
-
-            <!-- REFLEKSI -->
-            <div class="xf-panel" id="reflect">
-              <div class="transform-grid">
-                <button id="btn-reflect" data-axis="X">Sumbu X</button>
-                <button id="btn-reflect" data-axis="Y">Sumbu Y</button>
-                <button id="btn-reflect" data-axis="XY">y = x</button>
-                <button id="btn-reflect" data-axis="ORIGIN">y = -x</button>
-              </div>
-            </div>
-
-            <!-- SHEAR -->
-            <div class="xf-panel" id="shear">
-              <label>Shx</label>
-              <input type="number" id="shearShx" value="0.3" step="0.1" />
-
-              <label>Shy</label>
-              <input type="number" id="shearShy" value="0" step="0.1" />
-
-              <button id="btn-shear" style="margin-top: 10px">Terapkan Shear</button>
-            </div>
-          </div>
+      <!-- Grup Size -->
+      <div class="ribbon-group">
+        <div class="ribbon-content flex-col">
+          <label for="lineWidthInput" style="font-size: 11px;">Size (<span id="lineWidthLabel">1</span>px)</label>
+          <input type="range" id="lineWidthInput" min="1" max="10" value="1" title="Ketebalan Garis" />
         </div>
+        <div class="ribbon-label">Size</div>
+      </div>
+      <div class="ribbon-separator"></div>
 
-        <!-- Pena -->
-        <div class="panel">
-          <div class="panel-title">Pena Bebas</div>
-
-          <div class="panel-body">
-            <button>Pencil</button>
-            <button>Marker</button>
-            <button>Airbrush</button>
+      <!-- Grup Colors -->
+      <div class="ribbon-group">
+        <div class="ribbon-content" style="align-items: center;">
+          <div class="color-boxes">
+            <div class="color-box-container">
+              <input type="color" id="colorPicker" value="#000000" title="Color 1 (Foreground)" />
+              <div style="font-size: 10px; text-align: center;">Color 1</div>
+            </div>
           </div>
+          <!-- Preset colors placeholder -->
+          <div class="color-palette">
+            <div class="palette-row">
+              <div class="c-swatch" style="background:black" data-color="#000000"></div><div class="c-swatch" style="background:gray" data-color="#808080"></div><div class="c-swatch" style="background:darkred" data-color="#8B0000"></div><div class="c-swatch" style="background:red" data-color="#FF0000"></div><div class="c-swatch" style="background:orange" data-color="#FFA500"></div><div class="c-swatch" style="background:yellow" data-color="#FFFF00"></div><div class="c-swatch" style="background:green" data-color="#008000"></div><div class="c-swatch" style="background:blue" data-color="#0000FF"></div><div class="c-swatch" style="background:purple" data-color="#800080"></div><div class="c-swatch" style="background:indigo" data-color="#4B0082"></div>
+            </div>
+            <div class="palette-row">
+              <div class="c-swatch" style="background:white" data-color="#FFFFFF"></div><div class="c-swatch" style="background:lightgray" data-color="#D3D3D3"></div><div class="c-swatch" style="background:brown" data-color="#A52A2A"></div><div class="c-swatch" style="background:pink" data-color="#FFC0CB"></div><div class="c-swatch" style="background:gold" data-color="#FFD700"></div><div class="c-swatch" style="background:lightyellow" data-color="#FFFFE0"></div><div class="c-swatch" style="background:lightgreen" data-color="#90EE90"></div><div class="c-swatch" style="background:lightblue" data-color="#ADD8E6"></div><div class="c-swatch" style="background:plum" data-color="#DDA0DD"></div><div class="c-swatch" style="background:lavender" data-color="#E6E6FA"></div>
+            </div>
+          </div>
+          <button class="ribbon-btn large" style="margin-left: 8px;" title="Edit Colors (Not Implemented)">🌈<br><span style="font-size:10px">Edit<br>colors</span></button>
+        </div>
+        <div class="ribbon-label">Colors</div>
+      </div>
+      <div class="ribbon-separator"></div>
+
+      <!-- Grup Transform -->
+      <div class="ribbon-group" style="position: relative;">
+        <div class="ribbon-content flex-col">
+          <button id="toggleTransform" class="ribbon-btn small" style="width: 100%; text-align: center;">⚙️ Show Transform</button>
+        </div>
+        <div class="ribbon-label">Transform</div>
+
+        <!-- ZONA 2: TRANSFORM PANEL (Floating) -->
+        <div id="transform-panel" class="transform-panel hidden">
+          <div class="transform-panel-header">Transformasi</div>
+
+          <!-- Mode Selector Grid -->
+          <div class="transform-mode-grid">
+            <button class="transform-mode-btn active" data-mode="translate">Translasi</button>
+            <button class="transform-mode-btn" data-mode="rotate">Rotasi</button>
+            <button class="transform-mode-btn" data-mode="scale">Scaling</button>
+            <button class="transform-mode-btn" data-mode="reflect">Refleksi</button>
+            <button class="transform-mode-btn" data-mode="shear">Shear</button>
+          </div>
+
+          <!-- Translasi Specific: Step & Arrows -->
+          <div id="stepGroup" class="transform-step-group">
+            <label>Step (px)</label>
+            <input type="number" id="transformStep" value="20" min="1" max="500" />
+          </div>
+
+          <div id="dirGrid" class="transform-dir-grid">
+            <button class="dir-btn" data-dx="-1" data-dy="-1">↖</button>
+            <button class="dir-btn" data-dx="0"  data-dy="-1">↑</button>
+            <button class="dir-btn" data-dx="1"  data-dy="-1">↗</button>
+            <button class="dir-btn" data-dx="-1" data-dy="0">←</button>
+            <button class="dir-btn center-dot" disabled>·</button>
+            <button class="dir-btn" data-dx="1"  data-dy="0">→</button>
+            <button class="dir-btn" data-dx="-1" data-dy="1">↙</button>
+            <button class="dir-btn" data-dx="0"  data-dy="1">↓</button>
+            <button class="dir-btn" data-dx="1"  data-dy="1">↘</button>
+          </div>
+
+          <!-- Dynamic Parameter Group (Rotasi/Scale/dll) -->
+          <div id="paramGroup" class="transform-param-group" style="display:none;"></div>
+          <button id="applyTransformBtn" class="apply-transform-btn" style="display:none;">Terapkan</button>
         </div>
       </div>
+      <div class="ribbon-separator"></div>
 
-      <!-- CANVAS -->
-      <div class="canvas-area">
-        <canvas id="paintCanvas" width="900" height="550"></canvas>
+       <!-- Grup Algorithm & Misc -->
+       <div class="ribbon-group">
+        <div class="ribbon-content flex-col">
+          <span id="lineTypePanel" style="display:inline-flex; align-items:center; gap:4px; margin-bottom: 4px;">
+            <select id="lineTypeSelect" title="Algoritma Garis">
+              <option>DDA</option>
+              <option>Bresenham</option>
+            </select>
+          </span>
+          <button id="clearBtn" class="ribbon-btn small" style="color: red;">🗑️ Clear</button>
+        </div>
+        <div class="ribbon-label">Misc</div>
       </div>
-    </div>
+    </nav>
 
-    <!-- FOOTER -->
-    <div class="footer">Tool aktif : Garis Bresenham</div>
+    <!-- ZONA 3 — Main Area -->
+    <main class="main-area">
+      <div class="canvas-wrapper" style="position: relative; display: inline-block;">
+        <canvas id="paintCanvas" width="900" height="550" style="display: block;"></canvas>
+        <canvas id="overlayCanvas" width="900" height="550" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;"></canvas>
+      </div>
+    </main>
+
+    <!-- ZONA 3 — Status Bar -->
+    <footer class="statusbar">
+      <div class="status-left">
+        <span id="coordDisplay">⌖ 0, 0px</span>
+        <span class="status-divider">|</span>
+        <span id="canvasSizeDisplay">◩ 900 × 550px</span>
+      </div>
+      <div class="status-right">
+        <span>Tool aktif: <span class="footer-tool-label">Garis Bresenham</span></span>
+        <span class="status-divider">|</span>
+        <span>100% 🔍</span>
+      </div>
+    </footer>
+
     <script type="module" src="js/main.js"></script>
     <script>
-      // Tab transformasi
+      // Tab transformasi logic
       const tabs = document.querySelectorAll(".xf-tab");
       const panels = document.querySelectorAll(".xf-panel");
 
@@ -366,9 +200,7 @@
         tab.addEventListener("click", () => {
           tabs.forEach((t) => t.classList.remove("active"));
           panels.forEach((p) => p.classList.remove("active"));
-
           tab.classList.add("active");
-
           document.getElementById(tab.dataset.target).classList.add("active");
         });
       });
@@ -379,6 +211,47 @@
       lineWidthInput.addEventListener("input", () => {
         lineWidthLabel.textContent = lineWidthInput.value;
       });
+
+      // Update Coordinate Display (Mouse move event handler placeholder, main.js does the real drawing)
+      const canvas = document.getElementById("paintCanvas");
+      const coordDisplay = document.getElementById("coordDisplay");
+      canvas.addEventListener("mousemove", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.floor(e.clientX - rect.left);
+        const y = Math.floor(e.clientY - rect.top);
+        coordDisplay.textContent = `⌖ ${x}, ${y}px`;
+      });
+      canvas.addEventListener("mouseleave", () => {
+         coordDisplay.textContent = `⌖ 0, 0px`;
+      });
+      
+      // Monkey patch footer update logic to work with new DOM structure
+      // Since main.js looks for .footer, we redirect it to .footer-tool-label
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                const footerText = document.querySelector('.footer')?.textContent;
+                // If main.js tried to write to a .footer element that we might have kept hidden
+                // Wait, main.js uses document.querySelector(".footer"). We don't have .footer anymore.
+                // We will just rename our footer to .footer to satisfy main.js
+            }
+        });
+      });
+    </script>
+    <!-- Hidden original footer to satisfy main.js document.querySelector(".footer") without breaking UI -->
+    <div class="footer" style="display: none;"></div>
+    <script>
+        // Sync hidden footer with status bar label
+        const hiddenFooter = document.querySelector('.footer');
+        const visibleLabel = document.querySelector('.footer-tool-label');
+        const footerObserver = new MutationObserver(() => {
+            if(hiddenFooter.textContent.startsWith("Tool aktif : ")) {
+                visibleLabel.textContent = hiddenFooter.textContent.replace("Tool aktif : ", "");
+            } else {
+                 visibleLabel.textContent = hiddenFooter.textContent;
+            }
+        });
+        footerObserver.observe(hiddenFooter, { childList: true, subtree: true, characterData: true });
     </script>
   </body>
 </html>
