@@ -182,9 +182,9 @@
     <div class="topbar">
       <div class="topbar-title">Paint 2D</div>
 
-      <button class="shape-btn active" data-shape="bresenham_line">
-        Garis
-      </button>
+      <button class="shape-btn" data-shape="select_mode" style="background: #e1f5fe; border-color: #03a9f4;">Mode Select</button>
+      <div class="divider"></div>
+      <button class="shape-btn active" data-shape="bresenham_line">Garis</button>
       <button class="shape-btn" data-shape="midpoint_circle">Lingkaran</button>
       <button class="shape-btn" data-shape="elips">Elips</button>
       <button class="shape-btn" data-shape="square">Persegi</button>
@@ -218,7 +218,7 @@
       </span>
 
       <input type="color" id="colorPicker" />
-
+      <button id="deleteShapeBtn" style="background: #ffebee; border-color: #ef5350; color: #c62828;">Hapus Objek</button>
       <button id="clearBtn">Clear</button>
     </div>
 

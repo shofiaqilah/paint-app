@@ -1,6 +1,3 @@
-/**
- * Fungsi pembantu untuk mengambil warna piksel pada koordinat (x, y)
- */
 export function getPixelColor(imgData, x, y, width) {
   const index = (y * width + x) * 4;
   return {
@@ -11,19 +8,25 @@ export function getPixelColor(imgData, x, y, width) {
   };
 }
 
-/**
- * Fungsi pembantu untuk mengubah warna piksel
- */
 export function setPixelColor(imgData, x, y, width, color) {
   const index = (y * width + x) * 4;
   imgData.data[index] = color.r;
   imgData.data[index + 1] = color.g;
   imgData.data[index + 2] = color.b;
-  imgData.data[index + 3] = color.a;
+  imgData.data[index + 3] = color.a ?? 255; // Default ke solid jika tidak ada alpha
 }
 
-export function colorsMatch(c1, c2) {
-  return c1.r === c2.r && c1.g === c2.g && c1.b === c2.b && c1.a === c2.a;
+// PERBAIKAN 1: Berikan toleransi jarak warna (Threshold) agar tidak sensitif terhadap pembulatan browser
+export function colorsMatch(c1, c2, threshold = 15) {
+  // Jika keduanya sama-sama transparan (Alpha dekat dengan 0), anggap warna cocok (background kosong)
+  if (c1.a < 10 && c2.a < 10) return true;
+  
+  // Hitung perbedaan absolut jarak warna RGB
+  return (
+    Math.abs(c1.r - c2.r) <= threshold &&
+    Math.abs(c1.g - c2.g) <= threshold &&
+    Math.abs(c1.b - c2.b) <= threshold
+  );
 }
 
 export function hexToRgba(hex) {
@@ -42,10 +45,29 @@ export function hexToRgba(hex) {
     r: (intValue >> 16) & 255,
     g: (intValue >> 8) & 255,
     b: intValue & 255,
-    a: 255,
+    a: 255, // Solid
   };
 }
 
 export function rgbaToCss(color) {
-  return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
+  // Pastikan nilai alpha tidak undefined
+  const alpha = color.a !== undefined ? color.a / 255 : 1;
+  return `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+}
+
+export function isPointInsidePolygon(x, y, vertices) {
+    let inside = false;
+    const n = vertices.length;
+
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = vertices[i].x, yi = vertices[i].y;
+        const xj = vertices[j].x, yj = vertices[j].y;
+
+        const intersect = ((yi > y) !== (yj > y)) && 
+                          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        
+        if (intersect) inside = !inside;
+    }
+
+    return inside;
 }

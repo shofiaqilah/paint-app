@@ -1,5 +1,5 @@
 export const canvas = document.getElementById("paintCanvas");
-export const ctx = canvas.getContext("2d");
+export const ctx = canvas.getContext("2d", { willReadFrequently: true });
 ctx.imageSmoothingEnabled = false;
 
 export function clearCanvas() {

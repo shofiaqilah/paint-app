@@ -1,21 +1,45 @@
 import { getPixelColor, setPixelColor, colorsMatch } from './helper.js';
 
-/**
- * Boundary Fill (4-Connected)
- */
-export function boundaryFill(imgData, width, height, x, y, fillColor, boundaryColor) {
-    if (x < 0 || x >= width || y < 0 || y >= height) return;
+export function boundaryFill(imgData, width, height, startX, startY, fillColor, boundaryColor) {
+    if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
 
-    const currentColor = getPixelColor(imgData, x, y, width);
+    // Jika titik awal sudah merupakan warna boundary atau sudah diwarnai fillColor, batalkan
+    const startColor = getPixelColor(imgData, startX, startY, width);
+    if (colorsMatch(startColor, boundaryColor) || colorsMatch(startColor, fillColor)) return;
 
-    // Jalankan jika warna sekarang bukan warna boundary DAN belum diwarnai dengan fillColor
-    if (!colorsMatch(currentColor, boundaryColor) && !colorsMatch(currentColor, fillColor)) {
+    const queue = [[startX, startY]];
+    
+    // Gunakan matriks/array 1D penanda (visited) untuk performa optimal agar tidak memproses piksel ganda
+    const visited = new Uint8Array(width * height);
+    visited[startY * width + startX] = 1;
+
+    while (queue.length > 0) {
+        const [x, y] = queue.shift();
+
+        // Warnai piksel aktif
         setPixelColor(imgData, x, y, width, fillColor);
 
-        // Rekursi ke 4 arah tetangga
-        boundaryFill(imgData, width, height, x + 1, y, fillColor, boundaryColor); // Kanan
-        boundaryFill(imgData, width, height, x - 1, y, fillColor, boundaryColor); // Kiri
-        boundaryFill(imgData, width, height, x, y + 1, fillColor, boundaryColor); // Bawah
-        boundaryFill(imgData, width, height, x, y - 1, fillColor, boundaryColor); // Atas
+        // Cek 4 arah mata angin
+        const directions = [
+            [x + 1, y], // Kanan
+            [x - 1, y], // Kiri
+            [x, y + 1], // Bawah
+            [x, y - 1]  // Atas
+        ];
+
+        for (const [nx, ny] of directions) {
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                const idx = ny * width + nx;
+                if (!visited[idx]) {
+                    const nextColor = getPixelColor(imgData, nx, ny, width);
+                    
+                    // Jika belum menyentuh warna pembatas dan belum diwarnai warna fill
+                    if (!colorsMatch(nextColor, boundaryColor) && !colorsMatch(nextColor, fillColor)) {
+                        visited[idx] = 1;
+                        queue.push([nx, ny]);
+                    }
+                }
+            }
+        }
     }
 }

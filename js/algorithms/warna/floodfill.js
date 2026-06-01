@@ -1,31 +1,37 @@
 import { getPixelColor, setPixelColor, colorsMatch } from './helper.js';
 
-/**
- * Flood Fill (Queue-based / Iterative)
- */
 export function floodFill(imgData, width, height, startX, startY, fillColor) {
     const targetColor = getPixelColor(imgData, startX, startY, width);
-    
-    // Jika warna target sudah sama dengan warna isi, hentikan agar tidak looping selamanya
     if (colorsMatch(targetColor, fillColor)) return;
 
     const queue = [[startX, startY]];
+    const visited = new Uint8Array(width * height);
+    visited[startY * width + startX] = 1;
 
     while (queue.length > 0) {
         const [x, y] = queue.shift();
-
-        if (x < 0 || x >= width || y < 0 || y >= height) continue;
 
         const currentColor = getPixelColor(imgData, x, y, width);
 
         if (colorsMatch(currentColor, targetColor)) {
             setPixelColor(imgData, x, y, width, fillColor);
 
-            // Masukkan tetangga ke dalam queue
-            queue.push([x + 1, y]);
-            queue.push([x - 1, y]);
-            queue.push([x, y + 1]);
-            queue.push([x, y - 1]);
+            const directions = [
+                [x + 1, y],
+                [x - 1, y],
+                [x, y + 1],
+                [x, y - 1]
+            ];
+
+            for (const [nx, ny] of directions) {
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                    const idx = ny * width + nx;
+                    if (!visited[idx]) {
+                        visited[idx] = 1;
+                        queue.push([nx, ny]);
+                    }
+                }
+            }
         }
     }
 }
