@@ -6,6 +6,8 @@ import { getSquarePoints, getRectanglePoints, getTrianglePoints } from "./shapes
 import { scanLineFill } from "./algorithms/warna/scanline.js";
 import { floodFill } from "./algorithms/warna/floodfill.js";
 import { boundaryFill } from "./algorithms/warna/boundaryfill.js";
+import { insideOutsideFill } from "./algorithms/warna/insideoutside.js";
+import { translate, scale, rotate, reflect, shear } from "./algorithms/transformasi/transformasi.js";
 import {
   hexToRgba,
   rgbaToCss,
@@ -31,6 +33,8 @@ let previewSnapshot = null;
 let previewFrameId = null;
 let lastShapeBounds = null;
 let lastStrokeColor = colorPicker.value;
+// Vertices shape terakhir — dipakai untuk transformasi & inside-outside fill
+let lastVertices = [];
 
 ctx.imageSmoothingEnabled = false;
 
@@ -255,12 +259,50 @@ function finalizeShape(endX, endY) {
     lastShapeBounds = bounds;
   }
 
+  // Simpan vertices shape tertutup untuk transformasi & fill
+  lastVertices = getShapeVertices(currentShape, startX, startY, endX, endY);
   lastStrokeColor = colorPicker.value;
+}
+
+/**
+ * Mengembalikan vertices (pojok-pojok) shape untuk keperluan transformasi & fill.
+ * Hanya shape tertutup yang menghasilkan vertices bermakna.
+ */
+function getShapeVertices(shape, x0, y0, x1, y1) {
+  switch (shape) {
+    case "square": {
+      const side = Math.min(Math.abs(x1 - x0), Math.abs(y1 - y0));
+      const signX = x1 >= x0 ? 1 : -1;
+      const signY = y1 >= y0 ? 1 : -1;
+      const x2 = x0 + signX * side;
+      const y2 = y0 + signY * side;
+      return [{ x: x0, y: y0 }, { x: x2, y: y0 }, { x: x2, y: y2 }, { x: x0, y: y2 }];
+    }
+    case "rectangle":
+      return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    case "triangle": {
+      const triType = triangleTypeSelect ? triangleTypeSelect.value : "right";
+      if (triType === "isosceles") {
+        return [{ x: Math.round((x0 + x1) / 2), y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+      } else if (triType === "equilateral") {
+        const base = Math.abs(x1 - x0);
+        const height = Math.round((Math.sqrt(3) / 2) * base);
+        const signY = y1 >= y0 ? 1 : -1;
+        const midX = Math.round((x0 + x1) / 2);
+        return [{ x: x0, y: y0 + signY * height }, { x: x1, y: y0 + signY * height }, { x: midX, y: y0 }];
+      } else {
+        return [{ x: x0, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+      }
+    }
+    default:
+      return [];
+  }
 }
 
 function applyFill() {
   const fillMethod = fillSelect.value;
   const fillColor = hexToRgba(colorPicker.value);
+  const fillColorCss = rgbaToCss(fillColor);
   const seedX = lastShapeBounds
     ? Math.round((lastShapeBounds.minX + lastShapeBounds.maxX) / 2)
     : Math.floor(canvas.width / 2);
@@ -275,17 +317,24 @@ function applyFill() {
       minY: seedY - 20,
       maxY: seedY + 20,
     };
+    const verts = lastVertices.length >= 3
+      ? lastVertices
+      : [
+          { x: bounds.minX, y: bounds.minY },
+          { x: bounds.maxX, y: bounds.minY },
+          { x: bounds.maxX, y: bounds.maxY },
+          { x: bounds.minX, y: bounds.maxY },
+        ];
+    scanLineFill(ctx, verts, fillColorCss);
+    return;
+  }
 
-    scanLineFill(
-      ctx,
-      [
-        { x: bounds.minX, y: bounds.minY },
-        { x: bounds.maxX, y: bounds.minY },
-        { x: bounds.maxX, y: bounds.maxY },
-        { x: bounds.minX, y: bounds.maxY },
-      ],
-      rgbaToCss(fillColor),
-    );
+  if (fillMethod === "Inside-Outside") {
+    if (lastVertices.length < 3) {
+      alert("Gambar shape tertutup (segitiga/persegi/persegi panjang) terlebih dahulu.");
+      return;
+    }
+    insideOutsideFill(ctx, lastVertices, fillColorCss);
     return;
   }
 
@@ -364,8 +413,134 @@ applyFillBtn.addEventListener("click", applyFill);
 document.getElementById("clearBtn").addEventListener("click", () => {
   clearCanvas();
   lastShapeBounds = null;
+  lastVertices = [];
   previewSnapshot = null;
   cancelPreview();
+});
+
+// =============================================
+// TRANSFORMASI — event listeners
+// =============================================
+
+/**
+ * Menggambar ulang canvas dari vertices yang sudah ditransformasi.
+ * Hapus canvas lalu gambar ulang shape dengan vertices baru.
+ */
+function redrawFromVertices(vertices) {
+  if (vertices.length === 0) return;
+  clearCanvas();
+
+  const lineWidth = Number.parseInt(lineWidthInput.value, 10) || 1;
+  const color = lastStrokeColor;
+
+  // Gambar setiap sisi poligon menggunakan Bresenham
+  const n = vertices.length;
+  for (let i = 0; i < n; i++) {
+    const p0 = vertices[i];
+    const p1 = vertices[(i + 1) % n];
+    const pts = getBresenhamPoints(Math.round(p0.x), Math.round(p0.y), Math.round(p1.x), Math.round(p1.y));
+    drawPoints(pts, color, lineWidth);
+  }
+
+  // Update bounds
+  lastShapeBounds = {
+    minX: Math.min(...vertices.map(v => v.x)),
+    maxX: Math.max(...vertices.map(v => v.x)),
+    minY: Math.min(...vertices.map(v => v.y)),
+    maxY: Math.max(...vertices.map(v => v.y)),
+  };
+}
+
+// Pusat shape saat ini
+function getShapeCenter() {
+  if (lastVertices.length === 0) return { x: canvas.width / 2, y: canvas.height / 2 };
+  const xs = lastVertices.map(v => v.x);
+  const ys = lastVertices.map(v => v.y);
+  return {
+    x: (Math.min(...xs) + Math.max(...xs)) / 2,
+    y: (Math.min(...ys) + Math.max(...ys)) / 2,
+  };
+}
+
+// TRANSLASI — tombol kompas
+document.querySelectorAll("[id='btn-translate']").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (lastVertices.length === 0) return;
+    const step = Number.parseFloat(document.getElementById("translateStep").value) || 20;
+    const tx = Number.parseInt(btn.dataset.tx) * step;
+    const ty = Number.parseInt(btn.dataset.ty) * step;
+    lastVertices = translate(lastVertices, tx, ty);
+    redrawFromVertices(lastVertices);
+  });
+});
+
+// ROTASI
+document.getElementById("btn-rotate-left").addEventListener("click", () => {
+  if (lastVertices.length === 0) return;
+  const angle = Number.parseFloat(document.getElementById("rotateAngle").value) || 45;
+  const center = getShapeCenter();
+  lastVertices = rotate(lastVertices, angle, center);
+  redrawFromVertices(lastVertices);
+});
+
+document.getElementById("btn-rotate-right").addEventListener("click", () => {
+  if (lastVertices.length === 0) return;
+  const angle = Number.parseFloat(document.getElementById("rotateAngle").value) || 45;
+  const center = getShapeCenter();
+  lastVertices = rotate(lastVertices, -angle, center);
+  redrawFromVertices(lastVertices);
+});
+
+// SCALING
+document.getElementById("btn-scale").addEventListener("click", () => {
+  if (lastVertices.length === 0) return;
+  const sx = Number.parseFloat(document.getElementById("scaleSx").value) || 1;
+  const sy = Number.parseFloat(document.getElementById("scaleSy").value) || 1;
+  const center = getShapeCenter();
+  lastVertices = scale(lastVertices, sx, sy, center);
+  redrawFromVertices(lastVertices);
+});
+
+// REFLEKSI
+document.querySelectorAll("[id='btn-reflect']").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (lastVertices.length === 0) return;
+    const axis = btn.dataset.axis;
+
+    if (axis === "XY") {
+      // y = x: tukar x dan y terhadap pusat
+      const center = getShapeCenter();
+      lastVertices = lastVertices.map(v => ({
+        x: center.x + (v.y - center.y),
+        y: center.y + (v.x - center.x),
+      }));
+    } else if (axis === "ORIGIN") {
+      // y = -x: tukar dan negate terhadap pusat
+      const center = getShapeCenter();
+      lastVertices = lastVertices.map(v => ({
+        x: center.x - (v.y - center.y),
+        y: center.y - (v.x - center.x),
+      }));
+    } else {
+      // Sumbu X atau Y — refleksi terhadap pusat shape
+      const center = getShapeCenter();
+      if (axis === "X") {
+        lastVertices = lastVertices.map(v => ({ x: v.x, y: 2 * center.y - v.y }));
+      } else {
+        lastVertices = lastVertices.map(v => ({ x: 2 * center.x - v.x, y: v.y }));
+      }
+    }
+    redrawFromVertices(lastVertices);
+  });
+});
+
+// SHEAR
+document.getElementById("btn-shear").addEventListener("click", () => {
+  if (lastVertices.length === 0) return;
+  const shx = Number.parseFloat(document.getElementById("shearShx").value) || 0;
+  const shy = Number.parseFloat(document.getElementById("shearShy").value) || 0;
+  lastVertices = shear(lastVertices, shx, shy);
+  redrawFromVertices(lastVertices);
 });
 
 setActiveShape(currentShape);
