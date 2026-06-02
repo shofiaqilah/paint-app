@@ -20,6 +20,8 @@ import {
 import { drawPencil } from "./algorithms/pen/pencil.js";
 import { drawMarker } from "./algorithms/pen/marker.js";
 import { drawAirbrush } from "./algorithms/pen/airbrush.js";
+import { drawPen } from "./algorithms/pen/pen.js";
+import { drawWatercolor } from "./algorithms/pen/watercolor.js";
 import { hexToRgba, rgbaToCss } from "./algorithms/warna/helper.js";
 import { canvas, ctx, clearCanvas } from "./utils/canvas.js";
 import { drawTransformOverlay, hitTestHandles, getHandlePositions } from "./utils/transform_ui.js";
@@ -29,7 +31,7 @@ const lineTypeSelect = document.getElementById("lineTypeSelect");
 const lineStyleSelect = document.getElementById("lineStyleSelect");
 const triangleTypeSelect = document.getElementById("triangleTypeSelect");
 const lineWidthInput = document.getElementById("lineWidthInput");
-const fillSelect = document.getElementById("fillSelect");
+const fillAlgoSelect = document.getElementById("fillAlgoSelect");
 const shapeButtons = document.querySelectorAll(".shape-btn");
 
 // TOAST NOTIFICATION [FIX: TRANSFORM]
@@ -65,23 +67,67 @@ let historyStack = [];
 let redoStack = [];
 
 function saveHistory() {
-  historyStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-  if (historyStack.length > MAX_HISTORY) historyStack.shift();
-  redoStack = [];
+    const entry = {
+        objects: JSON.parse(JSON.stringify(objects)),
+        snapshot: transformBaseSnapshot
+            ? new ImageData(
+                new Uint8ClampedArray(transformBaseSnapshot.data),
+                transformBaseSnapshot.width,
+                transformBaseSnapshot.height
+              )
+            : null
+    };
+    historyStack.push(entry);
+    if (historyStack.length > MAX_HISTORY) historyStack.shift();
+    redoStack.length = 0;
 }
 
-function undo() {
-  if (historyStack.length === 0) return;
-  applySelection(); // Commit selection before undo [FIX: SELECT]
-  redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-  ctx.putImageData(historyStack.pop(), 0, 0);
+function applyUndo() {
+    if (historyStack.length === 0) return;
+    applySelection();
+
+    const currentEntry = {
+        objects: JSON.parse(JSON.stringify(objects)),
+        snapshot: transformBaseSnapshot
+            ? new ImageData(
+                new Uint8ClampedArray(transformBaseSnapshot.data),
+                transformBaseSnapshot.width,
+                transformBaseSnapshot.height
+              )
+            : null
+    };
+    redoStack.push(currentEntry);
+
+    const prev = historyStack.pop();
+    objects = prev.objects;
+    transformBaseSnapshot = prev.snapshot;
+
+    selectedObjectId = null;
+    renderAllObjects();
 }
 
-function redo() {
-  if (redoStack.length === 0) return;
-  applySelection(); // Commit selection before redo [FIX: SELECT]
-  historyStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-  ctx.putImageData(redoStack.pop(), 0, 0);
+function applyRedo() {
+    if (redoStack.length === 0) return;
+    applySelection();
+
+    const currentEntry = {
+        objects: JSON.parse(JSON.stringify(objects)),
+        snapshot: transformBaseSnapshot
+            ? new ImageData(
+                new Uint8ClampedArray(transformBaseSnapshot.data),
+                transformBaseSnapshot.width,
+                transformBaseSnapshot.height
+              )
+            : null
+    };
+    historyStack.push(currentEntry);
+
+    const next = redoStack.pop();
+    objects = next.objects;
+    transformBaseSnapshot = next.snapshot;
+
+    selectedObjectId = null;
+    renderAllObjects();
 }
 
 document.addEventListener('keydown', (e) => {
@@ -98,9 +144,11 @@ document.addEventListener('keydown', (e) => {
               objects = objects.filter(obj => !targets.includes(obj));
               renderAllObjects();
           } else {
-              // Fallback to bitmap delete only if no objects found
+              // Fallback to bitmap delete
               ctx.fillStyle = "white";
               ctx.fillRect(selectedRegion.x, selectedRegion.y, selectedRegion.width, selectedRegion.height);
+              // Sinkronkan snapshot setelah penghapusan bitmap agar tidak muncul lagi
+              transformBaseSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
           }
           stopMarchingAnts();
           hasSelectionBox = false;
@@ -157,12 +205,12 @@ document.addEventListener('keydown', (e) => {
       return;
   }
 
-  if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
-  if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+  if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); applyUndo(); }
+  if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); applyRedo(); }
 });
 
-document.getElementById('btnUndo').addEventListener('click', undo);
-document.getElementById('btnRedo').addEventListener('click', redo);
+document.getElementById('btnUndo').addEventListener('click', applyUndo);
+document.getElementById('btnRedo').addEventListener('click', applyRedo);
 
 // BUG 7: Save
 document.getElementById('btnSave').addEventListener('click', () => {
@@ -335,7 +383,7 @@ function shouldPreviewShape(shape) {
 }
 
 function isFreehandTool(shape) {
-  return shape === "pencil" || shape === "marker" || shape === "airbrush";
+  return shape === "pencil" || shape === "marker" || shape === "airbrush" || shape === "pen" || shape === "watercolor";
 }
 
 function applySelection() {
@@ -418,21 +466,22 @@ function setActiveShape(shape) {
       rectangle: "Persegi Panjang",
       triangle: "Segitiga",
       pencil: "Pencil",
+      pen: "Pen",
       marker: "Marker",
       airbrush: "Airbrush",
-      select: "Select",
-      fill: "Fill"
+      watercolor: "Watercolor",
+      select: "Select"
     };
     footer.textContent = `Tool aktif : ${labels[shape] || shape}`;
   }
 }
 
-function plotPixel(x, y, color, size = 1) {
+function plotPixel(x, y, color, size = 1, targetCtx = ctx) {
   const pixelSize = Math.max(1, Number.parseInt(size, 10) || 1);
   const offset = Math.floor(pixelSize / 2);
 
-  ctx.fillStyle = color;
-  ctx.fillRect(
+  targetCtx.fillStyle = color;
+  targetCtx.fillRect(
     Math.round(x) - offset,
     Math.round(y) - offset,
     pixelSize,
@@ -440,11 +489,11 @@ function plotPixel(x, y, color, size = 1) {
   );
 }
 
-function drawPoints(points, color, size = 1) {
+function drawPoints(points, color, size = 1, targetCtx = ctx) {
   const seen = new Set();
   const roundedSize = Math.max(1, Number.parseInt(size, 10) || 1);
 
-  ctx.fillStyle = color;
+  targetCtx.fillStyle = color;
   for (const point of points) {
     const x = Math.round(point.x);
     const y = Math.round(point.y);
@@ -452,7 +501,7 @@ function drawPoints(points, color, size = 1) {
 
     if (seen.has(key)) continue;
     seen.add(key);
-    plotPixel(x, y, color, roundedSize);
+    plotPixel(x, y, color, roundedSize, targetCtx);
   }
 }
 
@@ -747,7 +796,7 @@ canvas.addEventListener("mousedown", (event) => {
   currentY = point.y;
   isDrawing = true;
 
-  if (currentShape !== "select" && currentShape !== "fill") {
+  if (currentShape !== "select") {
       saveHistory();
   }
 
@@ -815,10 +864,14 @@ canvas.addEventListener("mousemove", (event) => {
 
     if (currentShape === "pencil") {
       drawPencil(ctx, lastX, lastY, currentX, currentY, color, size);
+    } else if (currentShape === "pen") {
+      drawPen(ctx, lastX, lastY, currentX, currentY, color, size);
     } else if (currentShape === "marker") {
-      drawMarker(ctx, lastX, lastY, currentX, currentY, color, size * 2);
+      drawMarker(ctx, lastX, lastY, currentX, currentY, color, size);
     } else if (currentShape === "airbrush") {
       drawAirbrush(ctx, currentX, currentY, color, size);
+    } else if (currentShape === "watercolor") {
+      drawWatercolor(ctx, lastX, lastY, currentX, currentY, color, size);
     }
 
     lastX = currentX;
@@ -867,61 +920,19 @@ canvas.addEventListener("mouseleave", () => {
   cancelPreview();
 });
 
-// BUG 5: Fill implementation on Canvas Click
-canvas.addEventListener('click', (e) => {
-  if (currentShape === 'fill') {
-    const fillMethod = fillSelect.value;
-    if (fillMethod === 'None') return;
-
-    saveHistory();
-
-    const { x, y } = getCanvasPoint(e);
-    const fillColor = hexToRgba(colorPicker.value);
-    const fillColorCss = rgbaToCss(fillColor);
-
-    // [FIX: BITMAP-OBJECT SEPARATION] Hide objects to fill ONLY the bitmap layer
-    if (transformBaseSnapshot) ctx.putImageData(transformBaseSnapshot, 0, 0);
-    else clearCanvas();
-
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    if (fillMethod === 'Flood Fill') {
-      floodFill(imgData, canvas.width, canvas.height, x, y, fillColor);
-      ctx.putImageData(imgData, 0, 0);
-    } else if (fillMethod === 'Boundary Fill') {
-      const boundaryColor = hexToRgba(lastStrokeColor);
-      boundaryFill(imgData, canvas.width, canvas.height, x, y, fillColor, boundaryColor);
-      ctx.putImageData(imgData, 0, 0);
-    } else if (fillMethod === 'Scan Line') {
-      if (lastVertices && lastVertices.length >= 3) {
-        scanLineFill(ctx, lastVertices, fillColorCss);
-      } else {
-        showToast("Gambar shape poligon terlebih dahulu untuk metode Scan Line.");
-      }
-    } else if (fillMethod === 'Inside-Outside') {
-      if (lastVertices && lastVertices.length >= 3) {
-        insideOutsideFill(ctx, lastVertices, fillColorCss);
-      } else {
-        showToast("Gambar shape poligon terlebih dahulu untuk metode Inside-Outside.");
-      }
-    }
-
-    // Capture new background and restore objects
-    transformBaseSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    renderAllObjects();
-  }
-});
-
 document.getElementById("clearBtn").addEventListener("click", () => {
-  saveHistory();
-  clearCanvas();
-  lastShapeBounds = null;
-  lastVertices = [];
-  lastShapeMetadata = null;
-  transformBaseSnapshot = null;
-  previewSnapshot = null;
-  cancelPreview();
-  applySelection();
+    saveHistory();
+    clearCanvas();
+    objects = [];
+    selectedObjectId = null;
+    transformBaseSnapshot = null;
+    lastShapeBounds = null;
+    lastVertices = [];
+    lastShapeMetadata = null;
+    previewSnapshot = null;
+    cancelPreview();
+    applySelection();
+    renderAllObjects();
 });
 
 // =============================================

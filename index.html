@@ -24,13 +24,11 @@
       <div class="ribbon-group">
         <div class="ribbon-content tools-grid">
           <button class="shape-btn icon-btn tool-active" data-shape="pencil" title="Pencil">✏️</button>
+          <button class="shape-btn icon-btn" data-shape="pen" id="penBtn" title="Pen">✒️</button>
           <button class="shape-btn icon-btn" data-shape="marker" title="Marker">🖍️</button>
           <button class="shape-btn icon-btn" data-shape="airbrush" title="Airbrush">💨</button>
+          <button class="shape-btn icon-btn" data-shape="watercolor" id="watercolorBtn" title="Watercolor">🖌️</button>
           <button class="shape-btn icon-btn" data-shape="select" id="btnSelect" title="Select">⬚</button>
-          <button class="shape-btn icon-btn" data-shape="fill" id="applyFillBtn" title="Fill">🪣</button>
-          <button class="icon-btn" title="Pick Color (Not Implemented)">💉</button>
-          <button class="icon-btn" title="Eraser (Not Implemented)">🧽</button>
-          <button class="icon-btn" title="Zoom (Not Implemented)">🔍</button>
         </div>
         <div class="ribbon-label">Tools & Brushes</div>
       </div>
@@ -54,13 +52,14 @@
               <option value="dotted">Outline: Dotted</option>
               <option value="dashed-dotted">Outline: Dash-Dot</option>
             </select>
-            <select id="fillSelect" title="Fill Style">
+            <select id="fillAlgoSelect">
               <option value="None">Fill: None</option>
-              <option value="Scan Line">Fill: Scan Line</option>
-              <option value="Inside-Outside">Fill: Inside-Outside</option>
-              <option value="Flood Fill">Fill: Flood Fill</option>
-              <option value="Boundary Fill">Fill: Boundary Fill</option>
+              <option value="Flood Fill">Flood Fill</option>
+              <option value="Boundary Fill">Boundary Fill</option>
+              <option value="Scan Line">Scan Line</option>
+              <option value="Inside-Outside">Inside-Outside</option>
             </select>
+            <button id="applyFillBtn">Apply Fill</button>
             <span id="triangleTypePanel" style="display:none; align-items:center; gap:4px;">
               <select id="triangleTypeSelect" title="Tipe Segitiga">
                 <option value="right">Siku-siku</option>
@@ -102,7 +101,7 @@
               <div class="c-swatch" style="background:white" data-color="#FFFFFF"></div><div class="c-swatch" style="background:lightgray" data-color="#D3D3D3"></div><div class="c-swatch" style="background:brown" data-color="#A52A2A"></div><div class="c-swatch" style="background:pink" data-color="#FFC0CB"></div><div class="c-swatch" style="background:gold" data-color="#FFD700"></div><div class="c-swatch" style="background:lightyellow" data-color="#FFFFE0"></div><div class="c-swatch" style="background:lightgreen" data-color="#90EE90"></div><div class="c-swatch" style="background:lightblue" data-color="#ADD8E6"></div><div class="c-swatch" style="background:plum" data-color="#DDA0DD"></div><div class="c-swatch" style="background:lavender" data-color="#E6E6FA"></div>
             </div>
           </div>
-          <button class="ribbon-btn large" style="margin-left: 8px;" title="Edit Colors (Not Implemented)">🌈<br><span style="font-size:10px">Edit<br>colors</span></button>
+          <button class="ribbon-btn large" style="margin-left: 8px; display: none;" title="Edit Colors (Not Implemented)">🌈<br><span style="font-size:10px">Edit<br>colors</span></button>
         </div>
         <div class="ribbon-label">Colors</div>
       </div>

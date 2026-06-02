@@ -9,10 +9,11 @@ export function floodFill(imgData, width, height, startX, startY, fillColor) {
     // Jika warna target sudah sama dengan warna isi, hentikan agar tidak looping selamanya
     if (colorsMatch(targetColor, fillColor)) return;
 
-    const queue = [[startX, startY]];
+    // Gunakan STACK (LIFO) alih-alih Queue (shift) untuk performa O(N)
+    const stack = [[startX, startY]];
 
-    while (queue.length > 0) {
-        const [x, y] = queue.shift();
+    while (stack.length > 0) {
+        const [x, y] = stack.pop();
 
         if (x < 0 || x >= width || y < 0 || y >= height) continue;
 
@@ -21,11 +22,11 @@ export function floodFill(imgData, width, height, startX, startY, fillColor) {
         if (colorsMatch(currentColor, targetColor)) {
             setPixelColor(imgData, x, y, width, fillColor);
 
-            // Masukkan tetangga ke dalam queue
-            queue.push([x + 1, y]);
-            queue.push([x - 1, y]);
-            queue.push([x, y + 1]);
-            queue.push([x, y - 1]);
+            // Masukkan tetangga ke dalam stack
+            stack.push([x + 1, y]);
+            stack.push([x - 1, y]);
+            stack.push([x, y + 1]);
+            stack.push([x, y - 1]);
         }
     }
 }
