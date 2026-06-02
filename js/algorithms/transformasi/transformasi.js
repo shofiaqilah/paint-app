@@ -93,13 +93,33 @@ export function shearEllipse(metadata, shx, shy, bakeFn) {
 
 /**
  * Fungsi helper untuk 'Baking' (mengonversi kurva parametrik ke path/titik)
+ * Menggunakan pendekatan parametrik agar titik-titik berurutan (mencegah bug solid fill saat digambar sebagai poligon)
  */
 export function bakeCurveToVertices(metadata, getPointsFn, lineStyle = 'solid') {
+    const vertices = [];
+    const segments = 100; // Jumlah segmen untuk kehalusan kurva
+    
     if (metadata.type === 'circle') {
-        return getPointsFn(metadata.cx, metadata.cy, metadata.r, lineStyle);
+        const r = metadata.r;
+        for (let i = 0; i < segments; i++) {
+            const theta = (i / segments) * 2 * Math.PI;
+            vertices.push({
+                x: metadata.cx + r * Math.cos(theta),
+                y: metadata.cy + r * Math.sin(theta)
+            });
+        }
     } else {
-        return getPointsFn(metadata.cx, metadata.cy, metadata.rx, metadata.ry, lineStyle);
+        const rx = metadata.rx;
+        const ry = metadata.ry;
+        for (let i = 0; i < segments; i++) {
+            const theta = (i / segments) * 2 * Math.PI;
+            vertices.push({
+                x: metadata.cx + rx * Math.cos(theta),
+                y: metadata.cy + ry * Math.sin(theta)
+            });
+        }
     }
+    return vertices;
 }
 
 // ==========================================

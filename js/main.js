@@ -93,19 +93,20 @@ document.addEventListener('keydown', (e) => {
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
           saveHistory();
-          if (!isDraggingSelection) {
-             ctx.putImageData(selectionSnapshot, 0, 0);
-             ctx.fillStyle = "white";
-             ctx.fillRect(selectedRegion.x, selectedRegion.y, selectedRegion.width, selectedRegion.height);
-          } else if (selectionCanvasBackup) {
-             ctx.putImageData(selectionCanvasBackup, 0, 0); 
+          const targets = getObjectsInSelection();
+          if (targets.length > 0) {
+              objects = objects.filter(obj => !targets.includes(obj));
+              renderAllObjects();
+          } else {
+              // Fallback to bitmap delete only if no objects found
+              ctx.fillStyle = "white";
+              ctx.fillRect(selectedRegion.x, selectedRegion.y, selectedRegion.width, selectedRegion.height);
           }
           stopMarchingAnts();
           hasSelectionBox = false;
           isDraggingSelection = false;
           selectedRegion = null;
-          selectionSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          showToast("Area dihapus");
+          showToast("Objek/Area dihapus");
           return;
       }
       if (e.ctrlKey && e.key.toLowerCase() === 'c') {
@@ -339,13 +340,6 @@ function isFreehandTool(shape) {
 
 function applySelection() {
   if (hasSelectionBox) {
-    if (isDraggingSelection && selectionCanvasBackup && selectionImageData) {
-        // Finalize the move by putting pixels in final spot
-        ctx.putImageData(selectionCanvasBackup, 0, 0);
-        ctx.putImageData(selectionImageData, selectedRegion.x, selectedRegion.y);
-    }
-    // Note: If not dragging, we don't need to put anything back because main canvas wasn't touched
-    
     stopMarchingAnts();
     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     hasSelectionBox = false;
@@ -363,12 +357,6 @@ function startMarchingAnts() {
     function animate() {
         if (!hasSelectionBox || !selectedRegion) return;
         
-        // ONLY update main canvas if we are actually moving pixels
-        if (isDraggingSelection && selectionCanvasBackup && selectionImageData) {
-            ctx.putImageData(selectionCanvasBackup, 0, 0);
-            ctx.putImageData(selectionImageData, selectedRegion.x, selectedRegion.y);
-        }
-
         // Always update the overlay UI
         overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         
@@ -583,8 +571,8 @@ function schedulePreviewRender() {
 function finalizeShape(endX, endY) {
   restorePreviewBase();
   
-  // [FIX: TRANSFORM] Simpan snapshot kanvas BERSIH sebelum shape digambar
-  transformBaseSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  // [FIX: TRANSFORM] transformBaseSnapshot NO LONGER updated here to avoid pollution
+  // It should only be updated by bitmap tools (pencil, fill)
 
   if (currentShape === "select") {
     const rx = Math.min(startX, endX);
@@ -594,6 +582,7 @@ function finalizeShape(endX, endY) {
     
     if (rw > 0 && rh > 0) {
       selectedRegion = { x: rx, y: ry, width: rw, height: rh };
+      // selectionSnapshot set to current background
       selectionSnapshot = transformBaseSnapshot;
       hasSelectionBox = true;
       startMarchingAnts();
@@ -735,11 +724,7 @@ canvas.addEventListener("mousedown", (event) => {
           // User clicked INSIDE existing selection -> start drag-move
           if (!isDraggingSelection) {
               saveHistory();
-              selectionImageData = ctx.getImageData(selectedRegion.x, selectedRegion.y, selectedRegion.width, selectedRegion.height);
-              ctx.putImageData(selectionSnapshot, 0, 0); // Clean canvas
-              ctx.fillStyle = "white"; // Background fill for moved region
-              ctx.fillRect(selectedRegion.x, selectedRegion.y, selectedRegion.width, selectedRegion.height);
-              selectionCanvasBackup = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              // [FIX: OBJECT-BASED DRAG] No longer capture ImageData or fillRect white
               isDraggingSelection = true;
           }
           
@@ -764,6 +749,12 @@ canvas.addEventListener("mousedown", (event) => {
 
   if (currentShape !== "select" && currentShape !== "fill") {
       saveHistory();
+  }
+
+  // [FIX: BITMAP-OBJECT SEPARATION] Hide objects when starting a bitmap tool
+  if (isFreehandTool(currentShape)) {
+      if (transformBaseSnapshot) ctx.putImageData(transformBaseSnapshot, 0, 0);
+      else clearCanvas();
   }
 
   if (shouldPreviewShape(currentShape)) {
@@ -792,8 +783,26 @@ canvas.addEventListener("mousemove", (event) => {
 
   // [FIX: SELECT] Only update coordinates if we are dragging the selection (marching ants redraws automatically)
   if (currentShape === "select" && isDraggingSelection) {
-     selectedRegion.x = point.x - dragOffsetX;
-     selectedRegion.y = point.y - dragOffsetY;
+     const dx = point.x - (selectedRegion.x + dragOffsetX);
+     const dy = point.y - (selectedRegion.y + dragOffsetY);
+
+     // Update objects inside selection [FIX: OBJECT-BASED DRAG]
+     const targets = getObjectsInSelection();
+     targets.forEach(obj => {
+         if (obj.type === 'line') {
+             obj.x0 += dx; obj.y0 += dy;
+             obj.x1 += dx; obj.y1 += dy;
+         } else if (obj.type === 'circle' || obj.type === 'ellipse') {
+             obj.cx += dx; obj.cy += dy;
+         } else if (obj.type === 'polygon') {
+             obj.vertices = translate(obj.vertices, dx, dy);
+         }
+     });
+
+     selectedRegion.x += dx;
+     selectedRegion.y += dy;
+     
+     renderAllObjects();
      return;
   }
 
@@ -828,13 +837,16 @@ canvas.addEventListener("mouseup", (event) => {
   currentX = point.x;
   currentY = point.y;
 
+  // [FIX: BITMAP-OBJECT SEPARATION] Capture background and restore objects
+  if (isFreehandTool(currentShape)) {
+      transformBaseSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      renderAllObjects();
+      return;
+  }
+
   if (currentShape === "select" && isDraggingSelection) {
-      // Tempatkan secara permanen
-      ctx.putImageData(selectionCanvasBackup, 0, 0);
-      ctx.putImageData(selectionImageData, selectedRegion.x, selectedRegion.y);
-      selectionSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      selectionCanvasBackup = null;
       isDraggingSelection = false;
+      renderAllObjects();
       return;
   }
 
@@ -866,6 +878,11 @@ canvas.addEventListener('click', (e) => {
     const { x, y } = getCanvasPoint(e);
     const fillColor = hexToRgba(colorPicker.value);
     const fillColorCss = rgbaToCss(fillColor);
+
+    // [FIX: BITMAP-OBJECT SEPARATION] Hide objects to fill ONLY the bitmap layer
+    if (transformBaseSnapshot) ctx.putImageData(transformBaseSnapshot, 0, 0);
+    else clearCanvas();
+
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     if (fillMethod === 'Flood Fill') {
@@ -888,6 +905,10 @@ canvas.addEventListener('click', (e) => {
         showToast("Gambar shape poligon terlebih dahulu untuk metode Inside-Outside.");
       }
     }
+
+    // Capture new background and restore objects
+    transformBaseSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    renderAllObjects();
   }
 });
 
