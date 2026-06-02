@@ -11,6 +11,22 @@ import { translate, scale, rotate, reflect, shear } from "./algorithms/transform
 import { getPixelColor, setPixelColor, colorsMatch, hexToRgba, rgbaToCss } from "./algorithms/warna/helper.js";
 import { canvas, ctx, clearCanvas } from "./utils/canvas.js";
 
+// JALUR IMPOR ALGORITMA PEN (Disesuaikan dengan struktur folder sesungguhnya)
+import { drawAirbrush } from "./pen/airbrush.js";
+import { drawMarker } from "./pen/marker.js";
+import { drawPen } from "./pen/pen.js";
+import { drawPencil } from "./pen/pencil.js";
+import { drawWatercolor } from "./pen/watercolor.js";
+
+// =========================================================================
+// KANVAS BAYANGAN (OFFSCREEN LAYER) UNTUK MENGGAMBAR BEBAS TANPA LAG
+// =========================================================================
+const offscreenCanvas = document.createElement("canvas");
+offscreenCanvas.width = canvas.width;
+offscreenCanvas.height = canvas.height;
+const offscreenCtx = offscreenCanvas.getContext("2d");
+offscreenCtx.imageSmoothingEnabled = false;
+
 // =========================================================================
 // STATE MANAGEMENT & UI ELEMENTS
 // =========================================================================
@@ -24,39 +40,62 @@ const applyFillBtn = document.getElementById("applyFillBtn");
 const shapeButtons = document.querySelectorAll(".shape-btn");
 
 // State Aplikasi
-let shapesList = [];             // Menampung semua objek yang digambar
+let shapesList = [];             // Hanya menampung objek geometri yang dapat dipilih/diformat
 let selectedShapeIndex = null;   // Indeks objek yang sedang di-select
-let currentShape = "bresenham_line"; // Tool aktif ("select_mode" jika sedang memilih)
+let currentShape = "bresenham_line"; // Tool aktif
 let isDrawing = false;
 
 // Koordinat Mouse
 let startX = 0, startY = 0;
+let lastX = 0, lastY = 0;
 let currentX = 0, currentY = 0;
 let previewSnapshot = null;
 
 ctx.imageSmoothingEnabled = false;
 
+// Fungsi pembantu untuk mendeteksi apakah tool saat ini adalah tipe menggambar bebas (tidak selectable)
+function isFreehandTool(shape) {
+  return shape === "freehand" || ["pencil", "pen", "marker", "airbrush", "watercolor", "eraser"].includes(shape);
+}
+
+// Mendapatkan fungsi gambar sesuai jenis pen/kuas
+function getFreehandDrawFunc(subType) {
+  switch (subType) {
+    case "pencil": return drawPencil;
+    case "marker": return drawMarker;
+    case "watercolor": return drawWatercolor;
+    case "pen": 
+    case "freehand":
+    default:
+      return drawPen;
+  }
+}
+
 // =========================================================================
-// MANAGEMENT CORE: DRAW ALL SHAPES (RETAINED MODE)
+// MANAGEMENT CORE: DRAW ALL SHAPES (MENDUKUNG LAYER RASTER & VEKTOR)
 // =========================================================================
 function drawAllShapes() {
+  // Bersihkan layar fisik utama
   clearCanvas();
 
+  // 1. Gambar layer lukisan bebas (Raster) dari Kanvas Bayangan terlebih dahulu
+  ctx.drawImage(offscreenCanvas, 0, 0);
+
+  // 2. Gambar semua objek geometris yang ada di shapesList (Vector/Object Layer)
   shapesList.forEach((shape, index) => {
-    // 1. Jalankan Algoritma Fill Terlebih Dahulu (jika ada)
+    // Jalankan Algoritma Fill Terlebih Dahulu (jika ada)
     if (shape.fillMethod && shape.fillColor) {
       renderShapeFillDirect(shape);
     }
 
-    // 2. Kalkulasi Titik Pinggiran (Stroke) Berdasarkan Tipe Objek
+    // Kalkulasi Titik Pinggiran (Stroke) Berdasarkan Tipe Objek
     let points = [];
     if (shape.type === "bresenham_line") {
       points = shape.lineAlgorithm === "DDA"
         ? getDdaPoints(shape.vertices[0].x, shape.vertices[0].y, shape.vertices[1].x, shape.vertices[1].y)
         : getBresenhamPoints(shape.vertices[0].x, shape.vertices[0].y, shape.vertices[1].x, shape.vertices[1].y);
     } 
-    else if (["square", "rectangle", "triangle"].includes(shape.type)) {
-      // Hubungkan setiap titik sudut membentuk poligon tertutup
+    else if (["square", "rectangle", "triangle"].includes(shape.type) || (shape.type === "elips" && shape.vertices.length > 0)) {
       const n = shape.vertices.length;
       for (let i = 0; i < n; i++) {
         const p0 = shape.vertices[i];
@@ -68,17 +107,14 @@ function drawAllShapes() {
     else if (shape.type === "midpoint_circle") {
       points = getMidpointCircle(shape.center.x, shape.center.y, shape.radiusX);
     } 
-    else if (shape.type === "elips") {
+    else if (shape.type === "elips" && shape.vertices.length === 0) {
       points = getMidpointEllipse(shape.center.x, shape.center.y, shape.radiusX, shape.radiusY);
     }
 
-    // Terapkan tipe garis (Solid, Dashed, Dotted, dll)
     const styledPoints = applyLineStyle(points, shape.lineStyle);
-    
-    // Gambar titik ke kanvas fisik
     drawPoints(styledPoints, shape.strokeColor, shape.lineWidth);
 
-    // 3. Beri Penanda Visual (Bounding Box) Jika Objek Sedang Di-select
+    // Beri Penanda Visual (Bounding Box) Jika Objek Sedang Di-select
     if (index === selectedShapeIndex) {
       drawSelectionBoundingBox(shape);
     }
@@ -88,7 +124,7 @@ function drawAllShapes() {
 // Fungsi pembantu untuk menghasilkan koordinat sudut buatan (poligon) untuk lingkaran/elips
 function generateVerticesForCircleOrEllipse(shape) {
   const vertices = [];
-  const totalPoints = 36; // Semakin besar angkanya, lingkaran poligon semakin mulus
+  const totalPoints = 36;
   
   for (let i = 0; i < totalPoints; i++) {
     const angle = (i * 2 * Math.PI) / totalPoints;
@@ -104,20 +140,17 @@ function renderShapeFillDirect(shape) {
   const fillColorCss = rgbaToCss(hexToRgba(shape.fillColor));
   const strokeRgb = hexToRgba(shape.strokeColor);
 
-  // Ambil vertices asli, jika lingkaran/elips buat vertices tiruan untuk Scan Line & Inside-Outside
   let targetVertices = [...shape.vertices];
   if (["midpoint_circle", "elips"].includes(shape.type)) {
     targetVertices = generateVerticesForCircleOrEllipse(shape);
   }
   
-  // 1. Eksekusi Scan Line / Inside-Outside Menggunakan Vertices
   if (shape.fillMethod === "Scan Line" && targetVertices.length >= 3) {
     scanLineFill(ctx, targetVertices, fillColorCss);
   } 
   else if (shape.fillMethod === "Inside-Outside" && targetVertices.length >= 3) {
     insideOutsideFill(ctx, targetVertices, fillColorCss);
   } 
-  // 2. Eksekusi Flood Fill / Boundary Fill Menggunakan Pixel Seed
   else if (["Flood Fill", "Boundary Fill"].includes(shape.fillMethod)) {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     
@@ -155,7 +188,7 @@ function drawSelectionBoundingBox(shape) {
     (bounds.maxX - bounds.minX) + 10, 
     (bounds.maxY - bounds.minY) + 10
   );
-  ctx.setLineDash([]); // Reset ke solid
+  ctx.setLineDash([]);
 }
 
 // =========================================================================
@@ -219,17 +252,15 @@ function drawPoints(points, color, size = 1) {
 // MODE SELECT: HIT TESTING (DETEKSI KLIK)
 // =========================================================================
 function performHitTest(clickX, clickY) {
-  // Cari objek dari urutan paling atas/terakhir dibuat (Looping mundur)
   for (let i = shapesList.length - 1; i >= 0; i--) {
     const shape = shapesList[i];
     const bounds = boundsFromShape(shape);
     if (!bounds) continue;
 
-    // Cek apakah klik berada di dalam area Bounding Box objek (dengan toleransi luas)
     const padding = 6;
     if (clickX >= bounds.minX - padding && clickX <= bounds.maxX + padding &&
         clickY >= bounds.minY - padding && clickY <= bounds.maxY + padding) {
-      return i; // Ketemu objeknya
+      return i;
     }
   }
   return null;
@@ -241,7 +272,6 @@ function performHitTest(clickX, clickY) {
 function setActiveShape(shape) {
   currentShape = shape;
 
-  // Manajemen UI Panel Samping
   const trianglePanel = document.getElementById("triangleTypePanel");
   if (trianglePanel) trianglePanel.style.display = shape === "triangle" ? "inline-flex" : "none";
 
@@ -252,13 +282,11 @@ function setActiveShape(shape) {
     button.classList.toggle("active", button.dataset.shape === shape);
   });
 
-  // Reset selection jika user keluar dari mode select ke mode menggambar biasa
   if (shape !== "select_mode") {
     selectedShapeIndex = null;
     drawAllShapes();
   }
 
-  // Update Teks Footer Status
   const footer = document.querySelector(".footer");
   if (footer) {
     if (shape === "select_mode") {
@@ -271,6 +299,13 @@ function setActiveShape(shape) {
         square: "Persegi",
         rectangle: "Persegi Panjang",
         triangle: "Segitiga",
+        freehand: "Menggambar Bebas",
+        pencil: "Pensil",
+        pen: "Pen",
+        marker: "Marker",
+        airbrush: "Airbrush",
+        watercolor: "Watercolor",
+        eraser: "Penghapus"
       };
       footer.textContent = `Tool aktif : ${labels[shape] || shape}`;
     }
@@ -278,45 +313,94 @@ function setActiveShape(shape) {
 }
 
 // =========================================================================
-// MOUSE DRAW & SELECTION EVENTS
+// MOUSE EVENTS: LOGIKA DIUBAH AGAR MENGGAMBAR LANGSUNG DI KANVAS BAYANGAN
 // =========================================================================
 canvas.addEventListener("mousedown", (event) => {
   const point = getCanvasPoint(event);
   startX = point.x;
   startY = point.y;
-  currentX = point.x;
-  currentY = point.y;
+  lastX = point.x;
+  lastY = point.y;
 
   if (currentShape === "select_mode") {
-    // Eksekusi logika pemilihan bangun ruang
     const hitIndex = performHitTest(startX, startY);
     selectedShapeIndex = hitIndex;
     drawAllShapes();
+  } else if (isFreehandTool(currentShape)) {
+    isDrawing = true;
+    
+    // Tentukan jenis kuas aktif
+    const activeSubType = currentShape === "freehand" ? "pen" : currentShape;
+    let brushSize = parseInt(lineWidthInput.value, 10) || 4;
+    if (activeSubType === "pencil") brushSize = 1;
+    if (activeSubType === "eraser") brushSize = 20;
+
+    // GAMBAR TITIK AWAL PADA KANVAS BAYANGAN (OFFSCREEN)
+    if (activeSubType === "eraser") {
+      offscreenCtx.save();
+      offscreenCtx.fillStyle = "#ffffff";
+      offscreenCtx.fillRect(startX - brushSize / 2, startY - brushSize / 2, brushSize, brushSize);
+      offscreenCtx.restore();
+    } else if (activeSubType === "airbrush") {
+      drawAirbrush(offscreenCtx, startX, startY, colorPicker.value, brushSize);
+    } else {
+      const drawFunc = getFreehandDrawFunc(activeSubType);
+      drawFunc(offscreenCtx, startX, startY, startX, startY, colorPicker.value, brushSize);
+    }
+
+    // Tampilkan di kanvas utama secara instan
+    drawAllShapes();
   } else {
-    // Logika Menggambar Objek Baru
     isDrawing = true;
     previewSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
   }
 });
 
 canvas.addEventListener("mousemove", (event) => {
-  if (!isDrawing || currentShape === "select_mode") return;
+  if (!isDrawing) return;
 
   const point = getCanvasPoint(event);
   currentX = point.x;
   currentY = point.y;
 
-  // RENDER LIVE PREVIEW
+  if (isFreehandTool(currentShape)) {
+    const activeSubType = currentShape === "freehand" ? "pen" : currentShape;
+    let brushSize = parseInt(lineWidthInput.value, 10) || 4;
+    if (activeSubType === "pencil") brushSize = 1;
+    if (activeSubType === "eraser") brushSize = 20;
+
+    // LUKIS GORESAN SEPANJANG GERAKAN MOUSE PADA KANVAS BAYANGAN
+    if (activeSubType === "eraser") {
+      offscreenCtx.save();
+      offscreenCtx.fillStyle = "#ffffff";
+      offscreenCtx.fillRect(currentX - brushSize / 2, currentY - brushSize / 2, brushSize, brushSize);
+      offscreenCtx.restore();
+    } else if (activeSubType === "airbrush") {
+      drawAirbrush(offscreenCtx, currentX, currentY, colorPicker.value, brushSize);
+    } else {
+      const drawFunc = getFreehandDrawFunc(activeSubType);
+      drawFunc(offscreenCtx, lastX, lastY, currentX, currentY, colorPicker.value, brushSize);
+    }
+
+    // Geser koordinat terakhir untuk gerakan kontinu
+    lastX = currentX;
+    lastY = currentY;
+
+    // Refresh gambar gabungan ke layar utama
+    drawAllShapes();
+    return;
+  }
+
+  // RENDER LIVE PREVIEW UNTUK GEOMETRIS (VEKTOR)
   if (previewSnapshot) {
     ctx.putImageData(previewSnapshot, 0, 0);
   }
 
-  // Objek tiruan sementara untuk ditampilkan secara realtime saat mouse ditarik
   let tempShape = {
     type: currentShape,
     lineAlgorithm: lineTypeSelect.value,
     lineStyle: lineStyleSelect.value.toLowerCase().replace(" ", "-"),
-    strokeColor: rgbaToCss({ ...hexToRgba(colorPicker.value), a: 90 }), // semi-transparan pas ditarik
+    strokeColor: rgbaToCss({ ...hexToRgba(colorPicker.value), a: 90 }), 
     lineWidth: parseInt(lineWidthInput.value, 10) || 1,
     vertices: getShapeVertices(currentShape, startX, startY, currentX, currentY),
     center: { x: (startX + currentX) / 2, y: (startY + currentY) / 2 },
@@ -331,21 +415,25 @@ canvas.addEventListener("mousemove", (event) => {
     tempShape.center = { x: startX, y: startY };
   }
 
-  // Gambar preview sementara di atas kanvas snapshot lama
   shapesList.push(tempShape);
   drawAllShapes();
-  shapesList.pop(); // langsung hapus dari list agar tidak merusak state asli
+  shapesList.pop();
 });
 
 canvas.addEventListener("mouseup", (event) => {
   if (!isDrawing) return;
   isDrawing = false;
 
+  if (isFreehandTool(currentShape)) {
+    // Selesai menggambar bebas, gambar permanen di offscreenCanvas dan tidak tersimpan di shapesList
+    drawAllShapes();
+    return;
+  }
+
   const point = getCanvasPoint(event);
   currentX = point.x;
   currentY = point.y;
 
-  // Masukkan data final objek baru ke sistem State manajemen
   const rawStyle = lineStyleSelect ? lineStyleSelect.value.toLowerCase() : "solid";
   let finalShape = {
     id: Date.now(),
@@ -370,16 +458,14 @@ canvas.addEventListener("mouseup", (event) => {
   }
 
   shapesList.push(finalShape);
-  selectedShapeIndex = shapesList.length - 1; // Otomatis selek objek yang barusan dibuat
+  selectedShapeIndex = shapesList.length - 1;
   drawAllShapes();
 });
 
-// Menghasilkan koordinat pojok poligon
 // Menghasilkan koordinat pojok poligon / garis
 function getShapeVertices(shape, x0, y0, x1, y1) {
   switch (shape) {
     case "bresenham_line":
-      // Mengembalikan titik awal (index 0) dan titik akhir (index 1) untuk garis
       return [{ x: x0, y: y0 }, { x: x1, y: y1 }];
 
     case "square": {
@@ -407,7 +493,7 @@ function getShapeVertices(shape, x0, y0, x1, y1) {
       }
     }
     default:
-      return []; // Lingkaran & Elips tidak memakai relasi garis vertex manual untuk tepi
+      return [];
   }
 }
 
@@ -429,7 +515,7 @@ function applyFill() {
 applyFillBtn.addEventListener("click", applyFill);
 
 // =========================================================================
-// EVENT LISTENERS: TRANSFORMASI (BERDASARKAN TARGET SELECTED SHAPE)
+// EVENT LISTENERS: TRANSFORMASI
 // =========================================================================
 
 // 1. TRANSLASI (KOMPAS)
@@ -442,11 +528,9 @@ document.querySelectorAll("[id='btn-translate']").forEach((btn) => {
     const tx = Number.parseInt(btn.dataset.tx) * step;
     const ty = Number.parseInt(btn.dataset.ty) * step;
 
-    // Geser titik pusat utama
     shape.center.x += tx;
     shape.center.y += ty;
 
-    // Geser semua koordinat sudut poligon (jika poligon)
     if (shape.vertices.length > 0) {
       shape.vertices = translate(shape.vertices, tx, ty);
     }
@@ -461,6 +545,10 @@ document.getElementById("btn-rotate-left").addEventListener("click", () => {
   let shape = shapesList[selectedShapeIndex];
   const angle = Number.parseFloat(document.getElementById("rotateAngle").value) || 45;
 
+  if (shape.type === "elips" && shape.vertices.length === 0) {
+    shape.vertices = generateVerticesForCircleOrEllipse(shape);
+  }
+
   if (shape.vertices.length > 0) {
     shape.vertices = rotate(shape.vertices, angle, shape.center);
   }
@@ -471,6 +559,9 @@ document.getElementById("btn-rotate-right").addEventListener("click", () => {
   if (selectedShapeIndex === null) return;
   let shape = shapesList[selectedShapeIndex];
   const angle = Number.parseFloat(document.getElementById("rotateAngle").value) || 45;
+  if (shape.type === "elips" && shape.vertices.length === 0) {
+    shape.vertices = generateVerticesForCircleOrEllipse(shape);
+  }
 
   if (shape.vertices.length > 0) {
     shape.vertices = rotate(shape.vertices, -angle, shape.center);
@@ -489,7 +580,6 @@ document.getElementById("btn-scale").addEventListener("click", () => {
     shape.radiusX = Math.round(shape.radiusX * sx);
     shape.radiusY = Math.round(shape.radiusY * sy);
     
-    // Otomatisasi mutasi: Jika lingkaran di-scaling tidak seimbang, tipenya berubah jadi elips
     if (shape.type === "midpoint_circle" && sx !== sy) {
       shape.type = "elips";
     }
@@ -508,10 +598,7 @@ document.querySelectorAll("[id='btn-reflect']").forEach((btn) => {
     let shape = shapesList[selectedShapeIndex];
     const axis = btn.dataset.axis;
 
-    if (["midpoint_circle", "elips"].includes(shape.type)) {
-      // Refleksi lingkaran/elips di pusatnya sendiri tidak merubah struktur, 
-      // hanya perlu memindahkan posisi center jika refleksi memakai koordinat luar.
-      // Di sini diasumsikan refleksi terhadap titik poros bangun ruang itu sendiri.
+    if (["midpoint_circle", "elips"].includes(shape.type) && shape.vertices.length === 0) {
       return; 
     }
 
@@ -565,6 +652,9 @@ document.getElementById("clearBtn").addEventListener("click", () => {
   shapesList = [];
   selectedShapeIndex = null;
   previewSnapshot = null;
+  
+  // Bersihkan kanvas utama dan kanvas bayangan (offscreen) sekaligus
+  offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
   clearCanvas();
 });
 
@@ -572,19 +662,13 @@ document.getElementById("clearBtn").addEventListener("click", () => {
 // EVENT LISTENER: HAPUS OBJEK YANG SEDANG DI-SELECT
 // =========================================================================
 document.getElementById("deleteShapeBtn").addEventListener("click", () => {
-  // 1. Validasi apakah ada objek yang sedang dipilih
   if (selectedShapeIndex === null) {
     alert("Silakan gunakan 'Mode Select' lalu klik pada salah satu objek terlebih dahulu untuk menghapusnya!");
     return;
   }
 
-  // 2. Hapus objek dari array berdasarkan indeks yang sedang aktif
   shapesList.splice(selectedShapeIndex, 1);
-
-  // 3. Reset index seleksi karena objeknya sudah tidak ada
   selectedShapeIndex = null;
-
-  // 4. Gambar ulang seluruh kanvas agar objek yang dihapus langsung hilang dari layar
   drawAllShapes();
 });
 

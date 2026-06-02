@@ -30,7 +30,12 @@ export function colorsMatch(c1, c2, threshold = 15) {
 }
 
 export function hexToRgba(hex) {
+  if (!hex || typeof hex !== 'string') {
+    return { r: 0, g: 0, b: 0, a: 0 }; 
+  }
+
   const normalizedHex = hex.replace("#", "");
+  
   const value =
     normalizedHex.length === 3
       ? normalizedHex
@@ -40,6 +45,10 @@ export function hexToRgba(hex) {
       : normalizedHex;
 
   const intValue = Number.parseInt(value, 16);
+
+  if (Number.isNaN(intValue)) {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
 
   return {
     r: (intValue >> 16) & 255,

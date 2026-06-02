@@ -1,176 +1,220 @@
-/* css/style.css */
+/* style.css */
+
+/* ROOT COLOR & APP BASE */
+:root {
+  --primary-color: #0d6efd;
+  --bg-app: #eef1f6;
+  --bg-topbar: #ffffff;
+  --bg-sidebar: #f8f9fa;
+  --border-color: #e2e8f0;
+  --canvas-shadow: rgba(15, 23, 42, 0.08);
+}
 
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-    background-color: #f0f2f5;
-    color: #333;
-    /* Ubah dari hidden ke auto agar jika bertumpuk ke bawah bisa di-scroll */
-    overflow-y: auto; 
-    min-height: 100vh;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-app);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.app-container {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap; /* KUNCI RESPONSIVE: membuat konten turun ke bawah jika layar sempit */
-    min-height: 100vh;
-    width: 100vw;
+/* TOPBAR CUSTOM STYLING */
+.topbar {
+  background-color: var(--bg-topbar);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  z-index: 10;
 }
 
-/* Sidebar Styling */
+.topbar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.025em;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border-color);
+  margin: 0 6px;
+}
+
+/* COLOR PICKER STYLING */
+.color-picker-wrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.color-picker-wrapper:hover {
+  transform: scale(1.1);
+}
+
+#colorPicker {
+  border: none;
+  width: 150%;
+  height: 150%;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+
+/* MAIN LAYOUT */
+.main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* SIDEBAR STYLING */
 .sidebar {
-    width: 300px;
-    background-color: #ffffff;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    z-index: 10;
+  width: 290px;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
 }
 
-/* Jika layar di bawah 768px (Mobile/Tablet), sidebar memenuhi lebar layar */
-@media (max-width: 768px) {
-    .sidebar {
-        width: 100%;
-        max-height: 50vh; /* Membatasi tinggi sidebar di HP agar kanvas tetap kelihatan */
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
+/* Panel / Cards Adjustment */
+.sidebar .card {
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
 }
 
-.sidebar h2 {
-    font-size: 1.2rem;
-    text-align: center;
-    color: #4a5568;
-    margin-bottom: 10px;
+.sidebar .card-header {
+  border-top-left-radius: 12px !important;
+  border-top-right-radius: 12px !important;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.sidebar hr {
-    border: 0;
-    height: 1px;
-    background: #e2e8f0;
-    margin-bottom: 20px;
+.sidebar .card-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: #475569;
 }
 
-/* Grouping Input */
-.control-group {
-    margin-bottom: 18px;
+/* TRANSFORM BAR TABS & COMPASS GRID */
+.transform-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
 }
 
-.control-group label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #4a5568;
-    margin-bottom: 6px;
+.transform-grid button {
+  font-size: 11px;
+  padding: 4px 2px;
+  border-radius: 6px;
 }
 
-select, input[type="number"] {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #cbd5e0;
-    border-radius: 6px;
-    background-color: #fff;
-    font-size: 0.9rem;
-    color: #2d3748;
-    outline: none;
-    transition: border-color 0.2s;
+.compass {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  max-width: 180px;
+  margin: 0 auto;
 }
 
-select:focus, input[type="number"]:focus {
-    border-color: #3182ce;
+.compass button {
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  transition: all 0.15s ease-in-out;
 }
 
-input[type="color"] {
-    width: 100%;
-    height: 38px;
-    border: 1px solid #cbd5e0;
-    border-radius: 6px;
-    padding: 2px;
-    cursor: pointer;
-    background: none;
+.compass button:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
 
-/* Tombol / Buttons */
-button {
-    width: 100%;
-    padding: 10px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: background-color 0.2s, transform 0.1s;
+/* PENA / FREEHAND GRID */
+.pena-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
 }
 
-button:active {
-    transform: scale(0.98);
+.pena-grid button {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.btn-secondary {
-    background-color: #edf2f7;
-    color: #4a5568;
-    margin-top: 8px;
-    border: 1px solid #cbd5e0;
+.pena-grid button i {
+  font-size: 14px;
 }
 
-.btn-secondary:hover {
-    background-color: #e2e8f0;
+.small-text {
+  font-size: 9px;
+  padding: 2px 4px;
 }
 
-.btn-danger {
-    background-color: #e53e3e;
-    color: white;
-}
-
-.btn-danger:hover {
-    background-color: #c53030;
-}
-
-/* Grid Tombol Transformasi */
-.transform-buttons {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-}
-
-.transform-buttons button {
-    padding: 8px 4px;
-    background-color: #3182ce;
-    color: white;
-    font-size: 0.8rem;
-}
-
-.transform-buttons button:hover {
-    background-color: #2b6cb0;
-}
-
-/* Area Kerja Kanvas */
+/* CANVAS ENVIRONMENT */
 .canvas-area {
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background-color: #e2e8f0;
-    min-width: 320px; /* Batas minimal area kerja */
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #cbd5e1; /* Retro-looking workspace background */
+  background-image: radial-gradient(#94a3b8 1px, transparent 1px);
+  background-size: 16px 16px;
+  padding: 24px;
+  overflow: auto;
 }
 
-/* KUNCI KANVAS RESPONSIF */
-#paintCanvas {
-    background-color: #ffffff;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    border-radius: 8px;
-    cursor: crosshair;
-    
-    /* CSS di bawah ini memaksa kanvas mengecil proporsional mengikuti pembungkusnya */
-    max-width: 100%;
-    height: auto; 
-    aspect-ratio: 4 / 3; 
+.canvas-container {
+  border-radius: 12px;
+  background-color: white;
+  padding: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15) !important;
+}
+
+canvas {
+  border-radius: 8px;
+  background-color: white;
+  border: 1px solid #94a3b8;
+  display: block;
+}
+
+/* FOOTER STYLING */
+.footer {
+  background-color: #f1f5f9;
+  border-top: 1px solid var(--border-color);
+  font-size: 11px;
+}
+
+/* TRANSFORM PANEL CONDITIONAL TABS */
+.xf-panel {
+  display: none;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.xf-panel.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
